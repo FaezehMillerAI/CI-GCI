@@ -72,7 +72,7 @@ class DualScaleVisualEncoder(nn.Module):
             # Local token features
             local_feat = self.proj_local(features) # [B, D, H, W]
             local_feat = local_feat.flatten(2).transpose(1, 2) # [B, H*W, D]
-        elif self.backbone_type in ["vit", "swin"]:
+        elif self.backbone_type in ["vit", "swin", "biomedclip"]:
             features = self.backbone(x) # [B, C, H, W]
             # Average pool for global token
             global_feat = features.mean(dim=[2, 3]) # [B, C]
