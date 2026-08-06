@@ -47,23 +47,41 @@ class DualScaleVisualEncoder(nn.Module):
             self.proj_global = nn.Linear(96, visual_dim)
             self.proj_local = nn.Linear(96, visual_dim)
         elif self.backbone_type == "biomedclip":
-            # BiomedCLIP ViT-B/16 fallback structure
-            self.backbone = nn.Sequential(
-                nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
-                nn.ReLU(),
-                nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
-                nn.Conv2d(64, 192, kernel_size=3, padding=1),
-                nn.ReLU(),
-                nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
-                nn.AdaptiveAvgPool2d((14, 14)) # 196 tokens
-            )
-            self.proj_global = nn.Linear(192, visual_dim)
-            self.proj_local = nn.Linear(192, visual_dim)
+            self.use_real = False
+            try:
+                from transformers import CLIPVisionModel
+                model_name = "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224"
+                print(f"Loading real BiomedCLIP Vision Encoder: {model_name}...")
+                self.backbone = CLIPVisionModel.from_pretrained(model_name)
+                self.use_real = True
+                print("Successfully loaded pre-trained BiomedCLIP Vision Encoder!")
+            except Exception as e:
+                print(f"Failed to load BiomedCLIP Vision model: {e}. Falling back to mock structure.")
+                self.backbone = nn.Sequential(
+                    nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
+                    nn.ReLU(),
+                    nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+                    nn.Conv2d(64, 192, kernel_size=3, padding=1),
+                    nn.ReLU(),
+                    nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+                    nn.AdaptiveAvgPool2d((14, 14)) # 196 tokens
+                )
+            self.proj_global = nn.Linear(768 if self.use_real else 192, visual_dim)
+            self.proj_local = nn.Linear(768 if self.use_real else 192, visual_dim)
         else:
             raise ValueError(f"Unknown backbone type: {backbone_type}")
 
     def forward(self, x: torch.Tensor):
         # x: [B, 3, 224, 224]
+        if self.backbone_type == "biomedclip" and getattr(self, "use_real", False):
+            outputs = self.backbone(x)
+            global_feat = outputs.pooler_output
+            global_feat = self.proj_global(global_feat)
+            
+            local_feat = outputs.last_hidden_state[:, 1:, :] # Exclude class token
+            local_feat = self.proj_local(local_feat)
+            return global_feat, local_feat
+            
         if self.backbone_type in ["resnet", "densenet"]:
             features = self.backbone(x) # [B, C, H, W]
             global_feat = self.global_pool(features).view(features.size(0), -1) # [B, C]

@@ -14,15 +14,25 @@ class ModularTextEncoder(nn.Module):
         self.embedding = nn.Embedding(1000, text_dim, padding_idx=0)
         self.lstm = nn.LSTM(text_dim, text_dim // 2, num_layers=1, batch_first=True, bidirectional=True)
         
-        # Try importing transformers
         self.use_hf = False
-        try:
-            from transformers import AutoTokenizer, AutoModel
-            # We don't download on startup to avoid hangs, but keep placeholders
-            self.tokenizer = None
-            self.hf_model = None
-        except ImportError:
-            pass
+        if "biomedclip" in self.encoder_type:
+            try:
+                from transformers import AutoTokenizer, CLIPTextModel
+                model_name = "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224"
+                print(f"Loading real BiomedCLIP Text Encoder: {model_name}...")
+                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+                self.hf_model = CLIPTextModel.from_pretrained(model_name)
+                self.use_hf = True
+                print("Successfully loaded pre-trained BiomedCLIP Text Encoder!")
+            except Exception as e:
+                print(f"Failed to load BiomedCLIP Text Model: {e}. Using mock LSTM encoder.")
+        else:
+            try:
+                from transformers import AutoTokenizer, AutoModel
+                self.tokenizer = None
+                self.hf_model = None
+            except ImportError:
+                pass
 
     def tokenize_and_encode_mock(self, texts: List[str], device: torch.device) -> Dict[str, torch.Tensor]:
         """Simple rule-based tokenizer and sequence encoder when transformers are unavailable."""
