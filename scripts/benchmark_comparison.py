@@ -109,6 +109,7 @@ def main():
             original_outputs = vqa_model(images, questions, device)
             original_logits = original_outputs["main_class_logits"]
             orig_probs = torch.softmax(original_logits, dim=-1)
+            gamma = original_outputs["gamma"]
             
             # Counterfactual images & pass
             cf_images = inpainter(images, masks)
@@ -116,7 +117,7 @@ def main():
             cf_logits = cf_outputs["main_class_logits"]
             
             # Calibrate (Ours)
-            causal_out = causal_decoder(original_logits, cf_logits)
+            causal_out = causal_decoder(original_logits, cf_logits, gamma=gamma)
             calibrated_probs = causal_out["calibrated_probs"]
             
             # Save original baseline predictions

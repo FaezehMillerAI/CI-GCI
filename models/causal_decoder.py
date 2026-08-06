@@ -11,12 +11,13 @@ class CausalContrastiveDecoder(nn.Module):
         super().__init__()
         self.gamma = gamma
 
-    def forward(self, original_logits, counterfactual_logits):
+    def forward(self, original_logits, counterfactual_logits, gamma=None):
         """
         Calibrates logits based on visual causal influence.
         Args:
             original_logits (torch.Tensor): Logits from original image (B, num_classes)
             counterfactual_logits (torch.Tensor): Logits from counterfactual healthy image (B, num_classes)
+            gamma (torch.Tensor, optional): Question-conditioned causal scale (B, 1)
         Returns:
             dict: {
                 "calibrated_probs": calibrated probabilities,
@@ -24,18 +25,17 @@ class CausalContrastiveDecoder(nn.Module):
                 "hallucination_score": hallucination probability
             }
         """
+        if gamma is None:
+            gamma = self.gamma
+            
         # 1. Calculate Individual Causal Effect (ICE)
-        # For positive visual features, removing the pathology should decrease logit value
         ice = original_logits - counterfactual_logits
         
         # 2. Estimate Hallucination Risk
-        # If ICE is small or negative (meaning removing pathology did NOT decrease confidence),
-        # then the prediction is driven by language shortcut / bias.
         # We calculate the deviation from expected causal drop:
-        hallucination_score = torch.sigmoid(-self.gamma * ice)
+        hallucination_score = torch.sigmoid(-gamma * ice)
         
         # 3. Calibrate Probabilities
-        # Original probabilities
         orig_probs = F.softmax(original_logits, dim=-1)
         
         # Scale original probabilities down where hallucination risk is high
@@ -50,17 +50,21 @@ class CausalContrastiveDecoder(nn.Module):
             "hallucination_score": hallucination_score
         }
 
-    def calibrate_generative_logits(self, original_gen_logits, counterfactual_gen_logits):
+    def calibrate_generative_logits(self, original_gen_logits, counterfactual_gen_logits, gamma=None):
         """
         Calibrates vocabulary token logits for open-ended text VQA generation.
         Args:
             original_gen_logits (torch.Tensor): Gen logits from original image (B, vocab_size)
             counterfactual_gen_logits (torch.Tensor): Gen logits from counterfactual scan (B, vocab_size)
+            gamma (torch.Tensor, optional): Question-conditioned causal scale (B, 1)
         Returns:
             torch.Tensor: Calibrated generative logits
         """
+        if gamma is None:
+            gamma = self.gamma
+            
         ice = original_gen_logits - counterfactual_gen_logits
-        hallucination_penalty = torch.sigmoid(-self.gamma * ice)
-        calibrated_gen_logits = original_gen_logits - self.gamma * hallucination_penalty
+        hallucination_penalty = torch.sigmoid(-gamma * ice)
+        calibrated_gen_logits = original_gen_logits - gamma * hallucination_penalty
         return calibrated_gen_logits
 

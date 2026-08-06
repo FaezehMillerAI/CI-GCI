@@ -69,6 +69,15 @@ class CQCNet(nn.Module):
             num_classes=model_cfg["num_classes"]
         )
         
+        # 8. Causal Gamma Head
+        self.causal_gamma_head = nn.Sequential(
+            nn.Linear(model_cfg["text_dim"], model_cfg["text_dim"] // 2),
+            nn.ReLU(),
+            nn.Linear(model_cfg["text_dim"] // 2, 1),
+            nn.Softplus()
+        )
+
+        
     def forward(self, images: torch.Tensor, questions: List[str], device: torch.device):
         batch_size = images.size(0)
         
@@ -89,13 +98,17 @@ class CQCNet(nn.Module):
         main_verifier_out = self.verifier(visual_global, visual_local, q_feat, main_fused_repr)
         main_grounding_score = main_verifier_out["grounding_score"] # [B]
         
+        # Step 4.5: Calculate learnable causal scale gamma
+        gamma = self.causal_gamma_head(q_feat) # [B, 1]
+        
         # Outputs container
         outputs = {
             "main_class_logits": main_class_logits,
             "main_gen_logits": main_gen_logits,
             "main_grounding_score": main_grounding_score,
             "main_region_coords": main_verifier_out["region_coords"],
-            "main_contradiction_score": main_verifier_out["contradiction_score"]
+            "main_contradiction_score": main_verifier_out["contradiction_score"],
+            "gamma": gamma
         }
         
         # If QCG is disabled or num_aux_questions is 0, return early (baseline style)

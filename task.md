@@ -1,7 +1,5 @@
 # CI-GCI Advanced Feature Tasks
 
-- `[x]` Extend `models/causal_decoder.py` and `evaluate_causal_vqa.py` to support Open-Ended VQA
-- `[x]` Implement a Latent Diffusion Inpainter in `models/inpainter.py`
-- `[x]` Implement `scripts/generate_plots_and_proofs.py` for Reliability Diagrams and Proof Sheets
-- `[x]` Implement `scripts/benchmark_comparison.py` for comparing CI-GCI against SOTA methods
-- `[x]` Verify all advanced pipeline checks pass and generate final walkthrough
+- `[/]` Implement learnable question-conditioned causal scale \(\gamma(Q)\) in `models/cqc_net.py` and `models/causal_decoder.py`
+- `[ ]` Update `scripts/evaluate_causal_vqa.py` and `scripts/benchmark_comparison.py` to use dynamic \(\gamma(Q)\)
+- `[ ]` Verify execution by running integration checks and benchmarking

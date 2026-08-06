@@ -121,13 +121,14 @@ def run_evaluation():
             # Forward VQA passes
             original_outputs = vqa_model(images, questions, device)
             original_logits = original_outputs["main_class_logits"]
+            gamma = original_outputs["gamma"]
             
             counterfactual_images = inpainter(images, masks)
             counterfactual_outputs = vqa_model(counterfactual_images, questions, device)
             counterfactual_logits = counterfactual_outputs["main_class_logits"]
             
-            # Calibrate via Causal Contrastive Decoder
-            causal_out = causal_decoder(original_logits, counterfactual_logits)
+            # Calibrate via Causal Contrastive Decoder using learnable gamma
+            causal_out = causal_decoder(original_logits, counterfactual_logits, gamma=gamma)
             calibrated_probs = causal_out["calibrated_probs"]
             
             orig_probs = torch.softmax(original_logits, dim=-1)
@@ -172,12 +173,13 @@ def run_evaluation():
                 
                 original_outputs = vqa_model(images, questions, device)
                 original_gen_logits = original_outputs["main_gen_logits"]
+                gamma = original_outputs["gamma"]
                 
                 counterfactual_images = inpainter(images, masks)
                 counterfactual_outputs = vqa_model(counterfactual_images, questions, device)
                 counterfactual_gen_logits = counterfactual_outputs["main_gen_logits"]
                 
-                calibrated_gen_logits = causal_decoder.calibrate_generative_logits(original_gen_logits, counterfactual_gen_logits)
+                calibrated_gen_logits = causal_decoder.calibrate_generative_logits(original_gen_logits, counterfactual_gen_logits, gamma=gamma)
                 
                 diff = torch.mean(torch.abs(original_gen_logits - calibrated_gen_logits)).item()
                 gen_diffs.append(diff)
