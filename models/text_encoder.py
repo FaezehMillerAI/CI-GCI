@@ -29,10 +29,14 @@ class ModularTextEncoder(nn.Module):
         else:
             try:
                 from transformers import AutoTokenizer, AutoModel
-                self.tokenizer = None
-                self.hf_model = None
-            except ImportError:
-                pass
+                model_name = "microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext"
+                print(f"Loading real PubMedBERT Text Encoder: {model_name}...")
+                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+                self.hf_model = AutoModel.from_pretrained(model_name)
+                self.use_hf = True
+                print("Successfully loaded pre-trained PubMedBERT Text Encoder!")
+            except Exception as e:
+                print(f"Failed to load PubMedBERT: {e}. Using mock LSTM encoder.")
 
     def tokenize_and_encode_mock(self, texts: List[str], device: torch.device) -> Dict[str, torch.Tensor]:
         """Simple rule-based tokenizer and sequence encoder when transformers are unavailable."""

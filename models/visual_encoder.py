@@ -24,19 +24,27 @@ class DualScaleVisualEncoder(nn.Module):
             self.proj_global = nn.Linear(1024, visual_dim)
             self.proj_local = nn.Conv2d(1024, visual_dim, kernel_size=1)
         elif self.backbone_type == "vit":
-            # We can use a simple custom ViT structure or standard ViT to avoid download hangs
-            # Let's write a robust fallback that has the right layers
-            self.backbone = nn.Sequential(
-                nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
-                nn.ReLU(),
-                nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
-                nn.Conv2d(64, 192, kernel_size=3, padding=1),
-                nn.ReLU(),
-                nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
-                nn.AdaptiveAvgPool2d((14, 14)) # 196 patch tokens
-            )
-            self.proj_global = nn.Linear(192, visual_dim)
-            self.proj_local = nn.Linear(192, visual_dim)
+            self.use_real = False
+            try:
+                from transformers import ViTModel
+                model_name = "google/vit-base-patch16-224-in21k"
+                print(f"Loading real ViT Vision Encoder: {model_name}...")
+                self.backbone = ViTModel.from_pretrained(model_name)
+                self.use_real = True
+                print("Successfully loaded pre-trained ViT Vision Encoder!")
+            except Exception as e:
+                print(f"Failed to load ViT model: {e}. Falling back to mock structure.")
+                self.backbone = nn.Sequential(
+                    nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
+                    nn.ReLU(),
+                    nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+                    nn.Conv2d(64, 192, kernel_size=3, padding=1),
+                    nn.ReLU(),
+                    nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+                    nn.AdaptiveAvgPool2d((14, 14)) # 196 patch tokens
+                )
+            self.proj_global = nn.Linear(768 if self.use_real else 192, visual_dim)
+            self.proj_local = nn.Linear(768 if self.use_real else 192, visual_dim)
         elif self.backbone_type == "swin":
             # Simple fallback structure
             self.backbone = nn.Sequential(
@@ -73,7 +81,7 @@ class DualScaleVisualEncoder(nn.Module):
 
     def forward(self, x: torch.Tensor):
         # x: [B, 3, 224, 224]
-        if self.backbone_type == "biomedclip" and getattr(self, "use_real", False):
+        if self.backbone_type in ["vit", "biomedclip"] and getattr(self, "use_real", False):
             outputs = self.backbone(x)
             global_feat = outputs.pooler_output
             global_feat = self.proj_global(global_feat)
