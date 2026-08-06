@@ -23,7 +23,7 @@ class HealMedVQADataset(Dataset):
         # Load dataset from Hugging Face
         try:
             from datasets import load_dataset
-            self.dataset = load_dataset("MM-Hallu/HEAL-MedVQA", split=split)
+            self.dataset = load_dataset("MM-Hallu/HEAL-MedVQA", name=split, split=split)
             self.active = True
             print(f"Loaded HEAL-MedVQA split: {split}. Total items: {len(self.dataset)}")
         except Exception as e:
