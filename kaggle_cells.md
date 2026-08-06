@@ -37,8 +37,8 @@ if os.path.exists(slake_input_path):
 else:
     print("SLAKE dataset path not found. Checking fallback...")
 
-# 2. Link MS-CXR dataset (if uploaded to Kaggle as a dataset)
-ms_cxr_input_path = "/kaggle/input/ms-cxr" # Adjust path based on your Kaggle upload
+# 2. Link MS-CXR dataset (adjust based on your Kaggle upload name)
+ms_cxr_input_path = "/kaggle/input/ms-cxr"
 ms_cxr_link = "data/ms-cxr"
 if os.path.exists(ms_cxr_input_path) and not os.path.exists(ms_cxr_link):
     os.symlink(ms_cxr_input_path, ms_cxr_link)
@@ -49,7 +49,17 @@ print("Environment dataset directories ready.")
 
 ---
 
-### **Cell 3: Train the Counterfactual Inpainter**
+### **Cell 3: Run Multi-Dataset Smoke Test**
+Run this cell to immediately verify that VQA-RAD, MS-CXR, HEAL-MedVQA, and SLAKE loaders and forward passes are working correctly.
+
+```python
+# Run the end-to-end smoke test on all datasets
+!PYTHONPATH=. python3 scripts/smoke_test_all.py --device cuda
+```
+
+---
+
+### **Cell 4: Train the Counterfactual Inpainter**
 Trains the UNet generative network on SLAKE images (runs on GPU).
 
 ```python
@@ -59,7 +69,7 @@ Trains the UNet generative network on SLAKE images (runs on GPU).
 
 ---
 
-### **Cell 4: VQA Model Fine-Tuning**
+### **Cell 5: VQA Model Fine-Tuning**
 Select which dataset you wish to train on by setting the `--dataset` argument:
 
 ```python
@@ -72,7 +82,7 @@ Select which dataset you wish to train on by setting the `--dataset` argument:
 
 ---
 
-### **Cell 5: Run Comparative Benchmarks (SOTA Study)**
+### **Cell 6: Run Comparative Benchmarks (SOTA Study)**
 Evaluates and compares the uncalibrated baseline against our CI-GCI pipeline across all datasets.
 
 ```python
@@ -91,7 +101,7 @@ print("\n--- BENCHMARK RESULTS: HEAL-MedVQA ---")
 
 ---
 
-### **Cell 6: Generate & Display Visual Proof Sheets**
+### **Cell 7: Generate & Display Visual Proof Sheets**
 Generates the reliability diagrams and side-by-side scan comparisons.
 
 ```python
@@ -110,6 +120,6 @@ display(Image(filename="outputs/reliability_diagram_slake.png"))
 print("\n--- VQA-RAD Reliability Diagrams ---")
 display(Image(filename="outputs/reliability_diagram_vqa_rad.png"))
 
-print("\n--- Visual Proof Sheet: SLAKE Patient 10 ---")
+print("\n--- Visual Proof Sheet: SLAKE Patient 0 ---")
 display(Image(filename="outputs/proofs/proof_slake_sample_0.png"))
 ```
