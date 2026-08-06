@@ -19,7 +19,7 @@ Run this block to clone the codebase and install requirements.
 ---
 
 ### **Cell 2: Dataset Configuration & Symbolic Linking**
-Creates links to mounted Kaggle dataset files so the code registers their paths immediately:
+This cell automatically scans `/kaggle/input/` recursively to find where **SLAKE** and **VQA-RAD** are mounted, creating symbolic links to `data/slake` and `data/VQA-RAD` dynamically (this solves Errno 2 path mismatch issues instantly):
 
 ```python
 import os
@@ -27,24 +27,43 @@ import os
 # Create data directories
 os.makedirs("data", exist_ok=True)
 
-# 1. Link SLAKE dataset
-slake_input_path = "/kaggle/input/datasets/rounakmandal/slake-vqa/Slake1.0"
-slake_link = "data/slake"
-if os.path.exists(slake_input_path):
-    if not os.path.exists(slake_link):
-        os.symlink(slake_input_path, slake_link)
-        print("SLAKE dataset linked successfully!")
-else:
-    print("SLAKE dataset path not found. Checking fallback...")
+def setup_symlink(dataset_name, search_filename, target_link, path_filter=None):
+    if os.path.exists(target_link):
+        if os.path.islink(target_link):
+            os.unlink(target_link)
+        else:
+            import shutil
+            shutil.rmtree(target_link)
+            
+    found_dir = None
+    print(f"Scanning /kaggle/input for {dataset_name} ({search_filename})...")
+    for root, dirs, files in os.walk("/kaggle/input"):
+        if path_filter and path_filter not in root.lower():
+            continue
+        for file in files:
+            if file == search_filename:
+                found_dir = root
+                break
+        if found_dir:
+            break
+            
+    if found_dir:
+        print(f"-> Found {dataset_name} at: {found_dir}")
+        os.symlink(found_dir, target_link)
+        print(f"-> Successfully linked to {target_link}")
+    else:
+        print(f"-> Warning: Could not find {dataset_name} dataset in /kaggle/input.")
 
-# 2. Link MS-CXR dataset (adjust based on your Kaggle upload name)
-ms_cxr_input_path = "/kaggle/input/ms-cxr"
-ms_cxr_link = "data/ms-cxr"
-if os.path.exists(ms_cxr_input_path) and not os.path.exists(ms_cxr_link):
-    os.symlink(ms_cxr_input_path, ms_cxr_link)
-    print("MS-CXR linked successfully!")
+# 1. Link SLAKE
+setup_symlink("SLAKE", "test.json", "data/slake", path_filter="slake")
 
-print("Environment dataset directories ready.")
+# 2. Link VQA-RAD
+setup_symlink("VQA-RAD", "VQA_RAD Dataset Public.json", "data/VQA-RAD")
+
+# 3. Link MS-CXR (if uploaded)
+setup_symlink("MS-CXR", "MS_CXR_Local_Alignment_v1.1.0.json", "data/ms-cxr")
+
+print("\nDataset configuration setup complete!")
 ```
 
 ---
