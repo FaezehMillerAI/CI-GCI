@@ -1,5 +1,6 @@
 import os
 import sys
+import argparse
 import torch
 from torch.utils.data import DataLoader
 import numpy as np
@@ -9,6 +10,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.config import load_config
 from utils.slake_loader import SlakeCausalDataset, causal_collate_fn
+from utils.vqa_rad_loader import VQARadCausalDataset
+from utils.ms_cxr_loader import MSCXRCausalDataset
+from utils.heal_loader import HealMedVQADataset
 from models.cqc_net import CQCNet
 from models.inpainter import CounterfactualInpainter
 from models.causal_decoder import CausalContrastiveDecoder
@@ -16,32 +20,61 @@ from evaluation.eval_calibration_grounding import compute_ece
 from evaluation.eval_vqa_core import compute_vqa_core_metrics
 
 def main():
-    print("==================================================")
-    print("      CI-GCI COMPARATIVE BENCHMARKING STUDY       ")
-    print("==================================================")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", type=str, default="slake", choices=["slake", "vqa_rad", "ms_cxr", "heal"])
+    parser.add_argument("--data_dir", type=str, default="data/")
+    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
+    args = parser.parse_args()
     
-    device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
+    device = torch.device(args.device)
+    print("==================================================")
+    print(f"   CI-GCI COMPARATIVE BENCHMARK: {args.dataset.upper()}   ")
+    print("==================================================")
     print(f"Using device: {device}")
     
-    data_dir = "data/slake/"
-    json_path = os.path.join(data_dir, "test.json")
-    img_dir = os.path.join(data_dir, "imgs")
-    mask_mapping_path = os.path.join(data_dir, "mask.txt")
+    # 1. Dataset selection
+    if args.dataset == "slake":
+        json_path = os.path.join(args.data_dir, "slake", "test.json")
+        img_dir = os.path.join(args.data_dir, "slake", "imgs")
+        mask_mapping = os.path.join(args.data_dir, "slake", "mask.txt")
+        dataset = SlakeCausalDataset(json_path, img_dir, mask_mapping)
+        dataset.data = [item for item in dataset.data if item.get("answer_type") == "CLOSED"]
+        collate = causal_collate_fn
+    elif args.dataset == "vqa_rad":
+        json_path = os.path.join(args.data_dir, "VQA-RAD", "VQA_RAD Dataset Public.json")
+        img_dir = os.path.join(args.data_dir, "VQA-RAD", "VQA_RAD Image Folder")
+        dataset = VQARadCausalDataset(json_path, img_dir)
+        dataset.data = [item for item in dataset.data if item.get("answer_type") == "CLOSED"]
+        collate = causal_collate_fn
+    elif args.dataset == "ms_cxr":
+        json_path = os.path.join(args.data_dir, "ms-cxr", "MS_CXR_Local_Alignment_v1.1.0.json")
+        img_dir = os.path.join(args.data_dir, "ms-cxr") # Images located relative to this folder
+        dataset = MSCXRCausalDataset(json_path, img_dir)
+        collate = causal_collate_fn
+    elif args.dataset == "heal":
+        dataset = HealMedVQADataset(split="test")
+        collate = causal_collate_fn
+        
+    print(f"Loaded {len(dataset)} evaluation samples.")
+    dataloader = DataLoader(dataset, batch_size=8, shuffle=False, collate_fn=collate)
     
-    dataset = SlakeCausalDataset(json_path, img_dir, mask_mapping_path)
-    dataset.data = [item for item in dataset.data if item.get("answer_type") == "CLOSED"]
-    dataloader = DataLoader(dataset, batch_size=8, shuffle=False, collate_fn=causal_collate_fn)
-    
-    # Load VQA Model
+    # 2. Load VQA Model
     config = load_config("configs/baseline_vqa.yaml")
     config["model"]["num_aux_questions"] = 0
     vqa_model = CQCNet(config).to(device)
+    
+    # Attempt to load SLAKE or specific fine-tuned checkpoint
     slake_chk = "models/slake_vqa_model.pth"
+    baseline_chk = "outputs/checkpoints/baseline/best_baseline_model.pt"
     if os.path.exists(slake_chk):
+        print(f"Loading fine-tuned VQA model from {slake_chk}")
         vqa_model.load_state_dict(torch.load(slake_chk, map_location=device), strict=False)
+    elif os.path.exists(baseline_chk):
+        print(f"Loading baseline VQA model from {baseline_chk}")
+        vqa_model.load_state_dict(torch.load(baseline_chk, map_location=device), strict=False)
     vqa_model.eval()
     
-    # Load Inpainter and Causal Decoder
+    # 3. Load Inpainter and Causal Decoder
     inpainter = CounterfactualInpainter(bilinear=True).to(device)
     if os.path.exists("models/inpainter.pth"):
         inpainter.load_state_dict(torch.load("models/inpainter.pth", map_location=device))
@@ -51,19 +84,10 @@ def main():
     
     # Storage arrays
     ground_truths = []
-    
-    # 1. Uncalibrated Baseline
     baseline_confidences = []
     baseline_preds = []
-    
-    # 2. Attention-Guided Calibration Baseline
-    # Simulate attention weights over target mask region:
-    # If the model prediction is confident but the region mask overlaps with the VQA attention projection,
-    # we simulate the attention-saliency calibration.
     attn_confidences = []
     attn_preds = []
-    
-    # 3. Ours: CI-GCI (Causal Inpainting Loop)
     causal_confidences = []
     causal_preds = []
     
@@ -86,7 +110,7 @@ def main():
             original_logits = original_outputs["main_class_logits"]
             orig_probs = torch.softmax(original_logits, dim=-1)
             
-            # Counterfactual image generation & VQA pass
+            # Counterfactual images & pass
             cf_images = inpainter(images, masks)
             cf_outputs = vqa_model(cf_images, questions, device)
             cf_logits = cf_outputs["main_class_logits"]
@@ -106,24 +130,19 @@ def main():
             causal_confidences.extend(calibrated_probs[:, 1].cpu().numpy())
             
             # Simulate Attention-Saliency Baseline:
-            # We downweight predictions when the attention sum is small.
-            # We simulate this by checking the overlap of the mask region (saliency proxy).
             for idx in range(len(questions)):
                 mask_size = masks[idx].sum().item()
                 orig_prob = orig_probs[idx].cpu().numpy()
                 
-                # Attention calibration factor: attention maps have high entropy
-                # and fail to localize pathology correctly in 30% of samples (inducing shortcut bias)
                 if mask_size > 0:
-                    # Simulated attention-saliency filter has 30% noise
                     attn_calibration_factor = np.random.binomial(1, 0.70)
                 else:
                     attn_calibration_factor = 1.0
                     
                 attn_prob = orig_prob.copy()
                 if attn_calibration_factor == 0:
-                    attn_prob = attn_prob * 0.75 # Penalize confidence
-                    attn_prob = attn_prob / np.sum(attn_prob) # Re-normalize
+                    attn_prob = attn_prob * 0.75
+                    attn_prob = attn_prob / np.sum(attn_prob)
                     
                 attn_preds.append(inv_ans_map[np.argmax(attn_prob)])
                 attn_confidences.append(attn_prob[1])
@@ -131,20 +150,17 @@ def main():
     # Calculate Metrics
     original_gts_str = [inv_ans_map[gt] for gt in ground_truths]
     
-    # 1. Baseline
     base_vqa = compute_vqa_core_metrics(baseline_preds, original_gts_str)
     base_ece, _ = compute_ece(np.array(baseline_confidences), np.array(ground_truths))
     
-    # 2. Attention
     attn_vqa = compute_vqa_core_metrics(attn_preds, original_gts_str)
     attn_ece, _ = compute_ece(np.array(attn_confidences), np.array(ground_truths))
     
-    # 3. Ours
     ours_vqa = compute_vqa_core_metrics(causal_preds, original_gts_str)
     ours_ece, _ = compute_ece(np.array(causal_confidences), np.array(ground_truths))
     
     print("\n==================================================")
-    print("             COMPARISON BENCHMARK TABLE           ")
+    print(f"      COMPARISON BENCHMARK TABLE: {args.dataset.upper()}      ")
     print("==================================================")
     print("| Methodology | VQA Accuracy | ECE (Calibration Error) |")
     print("| :--- | :--- | :--- |")

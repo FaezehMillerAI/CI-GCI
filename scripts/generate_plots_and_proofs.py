@@ -1,5 +1,6 @@
 import os
 import sys
+import argparse
 import torch
 from torch.utils.data import DataLoader
 import numpy as np
@@ -10,14 +11,18 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.config import load_config
 from utils.slake_loader import SlakeCausalDataset, causal_collate_fn
+from utils.vqa_rad_loader import VQARadCausalDataset
+from utils.ms_cxr_loader import MSCXRCausalDataset
+from utils.heal_loader import HealMedVQADataset
 from models.cqc_net import CQCNet
 from models.inpainter import CounterfactualInpainter
 from models.causal_decoder import CausalContrastiveDecoder
 
-def generate_reliability_diagram(original_confidences, calibrated_confidences, ground_truths, save_path="outputs/reliability_diagram.png", num_bins=10):
+def generate_reliability_diagram(original_confidences, calibrated_confidences, ground_truths, dataset_name, save_dir="outputs/"):
     """
     Plots Reliability Diagrams (confidence vs. accuracy) for original and calibrated models.
     """
+    num_bins = 10
     bin_boundaries = np.linspace(0, 1, num_bins + 1)
     
     orig_accs = []
@@ -51,7 +56,6 @@ def generate_reliability_diagram(original_confidences, calibrated_confidences, g
             cal_accs.append(0.0)
             cal_confs.append((bin_lower + bin_upper) / 2.0)
             
-    # Plot
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     
     # Left: Original
@@ -61,7 +65,7 @@ def generate_reliability_diagram(original_confidences, calibrated_confidences, g
     axes[0].set_ylim([0, 1])
     axes[0].set_xlabel("Confidence")
     axes[0].set_ylabel("Accuracy")
-    axes[0].set_title("Original VQA Calibration")
+    axes[0].set_title(f"Original VQA ({dataset_name.upper()})")
     axes[0].legend(loc="upper left")
     axes[0].grid(True, linestyle=':', alpha=0.6)
     
@@ -72,32 +76,36 @@ def generate_reliability_diagram(original_confidences, calibrated_confidences, g
     axes[1].set_ylim([0, 1])
     axes[1].set_xlabel("Confidence")
     axes[1].set_ylabel("Accuracy")
-    axes[1].set_title("Calibrated Causal VQA Calibration")
+    axes[1].set_title(f"Calibrated VQA ({dataset_name.upper()})")
     axes[1].legend(loc="upper left")
     axes[1].grid(True, linestyle=':', alpha=0.6)
     
     plt.tight_layout()
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    save_path = os.path.join(save_dir, f"reliability_diagram_{dataset_name}.png")
+    os.makedirs(save_dir, exist_ok=True)
     plt.savefig(save_path, dpi=300)
     plt.close()
     print(f"Reliability Diagram saved successfully to {save_path}")
 
-def generate_proof_sheets(dataset, inpainter, device, save_dir="outputs/proofs/"):
+def generate_proof_sheets(dataset, inpainter, device, dataset_name, save_dir="outputs/proofs/"):
     """
     Saves visual side-by-side columns: Original Image, ROI Mask, and Inpainted Image.
     """
     os.makedirs(save_dir, exist_ok=True)
     
-    # Pick a few distinct samples with non-empty masks
     sampled_indices = []
     for idx in range(len(dataset)):
         mask = dataset[idx]["mask"]
-        if mask.sum() > 200: # Has a significant pathology / organ region
+        if mask.sum() > 200: # Has a significant mask
             sampled_indices.append(idx)
         if len(sampled_indices) >= 3:
             break
             
-    print(f"Generating visual proofs for test indices: {sampled_indices}")
+    # Fallback to first three items if no matching masks
+    if not sampled_indices:
+        sampled_indices = list(range(min(3, len(dataset))))
+        
+    print(f"Generating visual proofs for {dataset_name} test indices: {sampled_indices}")
     
     for idx in sampled_indices:
         item = dataset[idx]
@@ -107,44 +115,64 @@ def generate_proof_sheets(dataset, inpainter, device, save_dir="outputs/proofs/"
         with torch.no_grad():
             cf_image = inpainter(image, mask)
             
-        # Denormalize image for display
         img_np = (image[0].cpu().numpy().transpose(1, 2, 0) * 0.229 + 0.485).clip(0, 1)
         cf_np = (cf_image[0].cpu().numpy().transpose(1, 2, 0) * 0.229 + 0.485).clip(0, 1)
         mask_np = mask[0, 0].cpu().numpy()
         
-        # Plot
         fig, axes = plt.subplots(1, 3, figsize=(12, 4))
         
         axes[0].imshow(img_np)
-        axes[0].set_title("Original Scan")
+        axes[0].set_title(f"Original Scan ({dataset_name.upper()})")
         axes[0].axis('off')
         
         axes[1].imshow(mask_np, cmap='gray')
-        axes[1].set_title(f"Target Mask M\n({', '.join(item['matched_classes'])})")
+        location = item.get("location", "pathology")
+        axes[1].set_title(f"Target Mask M\n(Location: {location})")
         axes[1].axis('off')
         
         axes[2].imshow(cf_np)
         axes[2].set_title("Inpainted Healthy Scan")
         axes[2].axis('off')
         
-        save_path = os.path.join(save_dir, f"proof_sample_{idx}.png")
+        save_path = os.path.join(save_dir, f"proof_{dataset_name}_sample_{idx}.png")
         plt.tight_layout()
         plt.savefig(save_path, dpi=300)
         plt.close()
         print(f"Proof Sheet saved successfully to {save_path}")
 
 def main():
-    device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", type=str, default="slake", choices=["slake", "vqa_rad", "ms_cxr", "heal"])
+    parser.add_argument("--data_dir", type=str, default="data/")
+    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
+    args = parser.parse_args()
     
-    data_dir = "data/slake/"
-    json_path = os.path.join(data_dir, "test.json")
-    img_dir = os.path.join(data_dir, "imgs")
-    mask_mapping_path = os.path.join(data_dir, "mask.txt")
+    device = torch.device(args.device)
     
-    dataset = SlakeCausalDataset(json_path, img_dir, mask_mapping_path)
-    dataset.data = [item for item in dataset.data if item.get("answer_type") == "CLOSED"]
-    
-    # Load VQA and Inpainter
+    # Load dataset
+    if args.dataset == "slake":
+        json_path = os.path.join(args.data_dir, "slake", "test.json")
+        img_dir = os.path.join(args.data_dir, "slake", "imgs")
+        mask_mapping = os.path.join(args.data_dir, "slake", "mask.txt")
+        dataset = SlakeCausalDataset(json_path, img_dir, mask_mapping)
+        dataset.data = [item for item in dataset.data if item.get("answer_type") == "CLOSED"]
+        collate = causal_collate_fn
+    elif args.dataset == "vqa_rad":
+        json_path = os.path.join(args.data_dir, "VQA-RAD", "VQA_RAD Dataset Public.json")
+        img_dir = os.path.join(args.data_dir, "VQA-RAD", "VQA_RAD Image Folder")
+        dataset = VQARadCausalDataset(json_path, img_dir)
+        dataset.data = [item for item in dataset.data if item.get("answer_type") == "CLOSED"]
+        collate = causal_collate_fn
+    elif args.dataset == "ms_cxr":
+        json_path = os.path.join(args.data_dir, "ms-cxr", "MS_CXR_Local_Alignment_v1.1.0.json")
+        img_dir = os.path.join(args.data_dir, "ms-cxr")
+        dataset = MSCXRCausalDataset(json_path, img_dir)
+        collate = causal_collate_fn
+    elif args.dataset == "heal":
+        dataset = HealMedVQADataset(split="test")
+        collate = causal_collate_fn
+        
+    # Load models
     config = load_config("configs/baseline_vqa.yaml")
     config["model"]["num_aux_questions"] = 0
     vqa_model = CQCNet(config).to(device)
@@ -162,18 +190,18 @@ def main():
     vqa_model.eval()
     inpainter.eval()
     
-    dataloader = DataLoader(dataset, batch_size=8, shuffle=False, collate_fn=causal_collate_fn)
+    dataloader = DataLoader(dataset, batch_size=8, shuffle=False, collate_fn=collate)
     
     original_confidences = []
     calibrated_confidences = []
     ground_truths = []
     ans_map = {"no": 0, "yes": 1}
     
-    # Generate proof sheets first
-    generate_proof_sheets(dataset, inpainter, device)
+    # Generate proofs
+    generate_proof_sheets(dataset, inpainter, device, args.dataset)
     
-    # Collect predictions to generate reliability diagram
-    print("Collecting calibration logits...")
+    # Collect calibration statistics
+    print("Collecting calibration statistics...")
     with torch.no_grad():
         for batch in dataloader:
             images = batch["image"].to(device)
@@ -198,11 +226,12 @@ def main():
             original_confidences.extend(orig_probs[:, 1].cpu().numpy())
             calibrated_confidences.extend(calibrated_probs[:, 1].cpu().numpy())
             
-    # Generate reliability diagram
+    # Reliability diagram
     generate_reliability_diagram(
         np.array(original_confidences),
         np.array(calibrated_confidences),
-        np.array(ground_truths)
+        np.array(ground_truths),
+        args.dataset
     )
 
 if __name__ == "__main__":
