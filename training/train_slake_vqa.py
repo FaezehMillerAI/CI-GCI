@@ -67,9 +67,22 @@ def train_vqa(dataset_name="slake", data_dir="data/", config_path="configs/basel
         print(f"Initializing with pre-trained visual/text encoders from {baseline_chk}")
         model.load_state_dict(torch.load(baseline_chk, map_location=device), strict=False)
         
+    # Freeze pre-trained visual & text backbones to prevent catastrophic forgetting
+    # and preserve BiomedCLIP's medical feature representations.
+    if hasattr(model.visual_encoder, "backbone"):
+        for param in model.visual_encoder.backbone.parameters():
+            param.requires_grad = False
+        print("-> Frozen pre-trained Visual Encoder backbone.")
+    if hasattr(model.text_encoder, "hf_model") and model.text_encoder.hf_model is not None:
+        for param in model.text_encoder.hf_model.parameters():
+            param.requires_grad = False
+        print("-> Frozen pre-trained Text Encoder backbone.")
+        
     model.train()
     
-    optimizer = optim.AdamW(model.parameters(), lr=lr)
+    # Only optimize parameters that require gradients
+    trainable_params = filter(lambda p: p.requires_grad, model.parameters())
+    optimizer = optim.AdamW(trainable_params, lr=lr)
     criterion = nn.CrossEntropyLoss()
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     
