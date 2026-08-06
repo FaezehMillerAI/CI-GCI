@@ -64,12 +64,16 @@ def main():
     config["model"]["num_aux_questions"] = 0
     vqa_model = CQCNet(config).to(device)
     
-    # Attempt to load SLAKE or specific fine-tuned checkpoint
-    slake_chk = "models/slake_vqa_model.pth"
+    # Attempt to load dataset-specific fine-tuned checkpoint
+    chk_path = f"models/{args.dataset}_vqa_model.pth"
+    if not os.path.exists(chk_path) and args.dataset in ["ms_cxr", "heal"]:
+        # Fallback to slake model for cross-dataset evaluation
+        chk_path = "models/slake_vqa_model.pth"
+        
     baseline_chk = "outputs/checkpoints/baseline/best_baseline_model.pt"
-    if os.path.exists(slake_chk):
-        print(f"Loading fine-tuned VQA model from {slake_chk}")
-        vqa_model.load_state_dict(torch.load(slake_chk, map_location=device), strict=False)
+    if os.path.exists(chk_path):
+        print(f"Loading fine-tuned VQA model from {chk_path}")
+        vqa_model.load_state_dict(torch.load(chk_path, map_location=device), strict=False)
     elif os.path.exists(baseline_chk):
         print(f"Loading baseline VQA model from {baseline_chk}")
         vqa_model.load_state_dict(torch.load(baseline_chk, map_location=device), strict=False)

@@ -179,9 +179,12 @@ def main():
     config["model"]["num_aux_questions"] = 0
     vqa_model = CQCNet(config).to(device)
     
-    slake_chk = "models/slake_vqa_model.pth"
-    if os.path.exists(slake_chk):
-        vqa_model.load_state_dict(torch.load(slake_chk, map_location=device), strict=False)
+    chk_path = f"models/{args.dataset}_vqa_model.pth"
+    if not os.path.exists(chk_path) and args.dataset in ["ms_cxr", "heal"]:
+        chk_path = "models/slake_vqa_model.pth"
+        
+    if os.path.exists(chk_path):
+        vqa_model.load_state_dict(torch.load(chk_path, map_location=device), strict=False)
         
     inpainter = CounterfactualInpainter(bilinear=True).to(device)
     if os.path.exists("models/inpainter.pth"):
