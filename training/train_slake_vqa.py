@@ -71,6 +71,7 @@ def train_vqa(dataset_name="slake", data_dir="data/", config_path="configs/basel
     
     optimizer = optim.AdamW(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     
     ans_map = {"no": 0, "yes": 1}
     best_val_acc = 0.0
@@ -141,6 +142,7 @@ def train_vqa(dataset_name="slake", data_dir="data/", config_path="configs/basel
             print(f"Saved best model to {checkpoint_path} with Val Acc: {val_acc:.4f}")
             
         model.train()
+        scheduler.step()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

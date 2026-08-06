@@ -46,6 +46,19 @@ class DualScaleVisualEncoder(nn.Module):
             )
             self.proj_global = nn.Linear(96, visual_dim)
             self.proj_local = nn.Linear(96, visual_dim)
+        elif self.backbone_type == "biomedclip":
+            # BiomedCLIP ViT-B/16 fallback structure
+            self.backbone = nn.Sequential(
+                nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+                nn.Conv2d(64, 192, kernel_size=3, padding=1),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+                nn.AdaptiveAvgPool2d((14, 14)) # 196 tokens
+            )
+            self.proj_global = nn.Linear(192, visual_dim)
+            self.proj_local = nn.Linear(192, visual_dim)
         else:
             raise ValueError(f"Unknown backbone type: {backbone_type}")
 

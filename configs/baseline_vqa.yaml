@@ -2,12 +2,12 @@ seed: 42
 device: "cpu"
 
 model:
-  visual_encoder: "vit"
-  visual_dim: 768
-  text_encoder: "pubmedbert"
-  text_dim: 768
+  visual_encoder: "biomedclip"
+  visual_dim: 512
+  text_encoder: "biomedclip"
+  text_dim: 512
   decoder_name: "qwen-small"
-  decoder_dim: 768
+  decoder_dim: 512
   max_seq_len: 128
 
 data:
