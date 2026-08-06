@@ -4,6 +4,8 @@ import argparse
 import torch
 from torch.utils.data import DataLoader
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 # Ensure code modules can be imported
