@@ -137,11 +137,11 @@ def causal_collate_fn(batch):
     masks = torch.stack([item["mask"] for item in batch])
     questions = [item["question"] for item in batch]
     answers = [item["answer"] for item in batch]
-    locations = [item["location"] for item in batch]
-    modalities = [item["modality"] for item in batch]
-    answer_types = [item["answer_type"] for item in batch]
-    content_types = [item["content_type"] for item in batch]
-    matched_classes = [item["matched_classes"] for item in batch]
+    locations = [item.get("location", "unknown") for item in batch]
+    modalities = [item.get("modality", "unknown") for item in batch]
+    answer_types = [item.get("answer_type", "OPEN") for item in batch]
+    content_types = [item.get("content_type", "unknown") for item in batch]
+    matched_classes = [item.get("matched_classes", []) for item in batch]
     
     return {
         "image": images,
