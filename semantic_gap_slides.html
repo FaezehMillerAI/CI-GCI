@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bridging the Semantic Gap in Medical VQA with Prompt Learning</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --slide-bg: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-tertiary: #9ca3af;
+            
+            --accent-blue: #2563eb;
+            --accent-blue-light: #eff6ff;
+            --accent-teal: #0d9488;
+            --accent-teal-light: #f0fdfa;
+            --accent-red: #dc2626;
+            --accent-red-light: #fef2f2;
+            
+            --border-color: #e5e7eb;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
+            
+            --font-heading: 'Outfit', sans-serif;
+            --font-body: 'Inter', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #f3f4f6;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Presentation Wrapper */
+        .deck-wrapper {
+            position: relative;
+            width: 1100px;
+            height: 650px;
+            background-color: var(--slide-bg);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Top Bar */
+        .top-bar {
+            height: 50px;
+            padding: 0 30px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .top-bar .paper-title {
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        /* Slides Container */
+        .slides-container {
+            flex: 1;
+            position: relative;
+        }
+
+        /* Individual Slide */
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 40px 60px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+            z-index: 10;
+        }
+
+        /* Slide Headings */
+        .slide-heading {
+            font-family: var(--font-heading);
+            font-size: 2.1rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            letter-spacing: -0.5px;
+        }
+
+        .slide-heading::after {
+            content: '';
+            flex: 1;
+            height: 1.5px;
+            background-color: var(--border-color);
+        }
+
+        /* Slide Layout Grids */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            align-items: center;
+            height: 100%;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 24px;
+            margin-top: 10px;
+        }
+
+        /* Title Slide Custom */
+        .title-slide {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background-image: radial-gradient(circle at 90% 10%, rgba(37, 99, 235, 0.04) 0%, transparent 40%);
+        }
+
+        .title-slide h1 {
+            font-family: var(--font-heading);
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1.25;
+            margin-bottom: 20px;
+            max-width: 950px;
+            letter-spacing: -1px;
+        }
+
+        .title-slide h2 {
+            font-size: 1.25rem;
+            color: var(--accent-blue);
+            font-weight: 600;
+            margin-bottom: 40px;
+            max-width: 800px;
+        }
+
+        .title-slide .metadata {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+            width: 60%;
+            justify-content: center;
+        }
+
+        /* Standard Content Lists */
+        ul {
+            list-style: none;
+        }
+
+        li {
+            position: relative;
+            padding-left: 24px;
+            margin-bottom: 15px;
+            font-size: 1.02rem;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+
+        li::before {
+            content: "•";
+            color: var(--accent-blue);
+            font-size: 1.8rem;
+            position: absolute;
+            left: 0;
+            top: -5px;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Cards & Panels */
+        .card {
+            background-color: var(--accent-blue-light);
+            border: 1px solid rgba(37, 99, 235, 0.12);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .card h4 {
+            font-family: var(--font-heading);
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-bottom: 12px;
+        }
+
+        .card p {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .callout-box {
+            background: linear-gradient(135deg, var(--accent-blue-light), var(--accent-teal-light));
+            border-left: 5px solid var(--accent-blue);
+            border-radius: 0 16px 16px 0;
+            padding: 30px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .callout-box h3 {
+            font-family: var(--font-heading);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .callout-box p {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            line-height: 1.5;
+        }
+
+        /* Step Panels */
+        .step-panel {
+            background-color: #f9fafb;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 16px 24px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .step-num {
+            background-color: var(--accent-blue);
+            color: white;
+            font-family: var(--font-heading);
+            font-weight: 800;
+            font-size: 1.2rem;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .step-text h4 {
+            font-family: var(--font-heading);
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .step-text p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Tables */
+        .slide-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+        }
+
+        .slide-table th {
+            background-color: var(--accent-blue-light);
+            color: var(--accent-blue);
+            font-weight: 700;
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 2px solid rgba(37, 99, 235, 0.15);
+            font-size: 0.85rem;
+        }
+
+        .slide-table td {
+            padding: 9px 12px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+        }
+
+        /* Proper Visualization Containers */
+        .viz-container {
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            background-color: #fafafa;
+            height: 100%;
+            min-height: 320px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.01);
+            position: relative;
+        }
+
+        /* Navigation controls bottom bar */
+        .nav-bar {
+            height: 60px;
+            padding: 0 30px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #fafafa;
+            user-select: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-primary);
+        }
+
+        .btn:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+            background-color: var(--accent-blue-light);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #f3f4f6;
+        }
+
+        .slide-counter {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        /* Keyboard Info Indicator */
+        .kbd-info {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .kbd {
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 3px;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.1);
+            padding: 1px 5px;
+            font-family: inherit;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="deck-wrapper">
+        <!-- TOP META BAR -->
+        <div class="top-bar">
+            <div>IEEE Transactions on Medical Imaging (TMI 2025)</div>
+            <div class="paper-title">Bridging the Semantic Gap in Med-VQA</div>
+        </div>
+
+        <!-- SLIDES CONTAINER -->
+        <div class="slides-container">
+
+            <!-- SLIDE 1: TITLE SLIDE -->
+            <div class="slide title-slide active" id="slide-1">
+                <h1>Bridging the Semantic Gap in Medical Visual<br>Question Answering With Prompt Learning</h1>
+                <h2>Dynamic Semantic-Adaptive Prompting (DSAP) Framework</h2>
+                <div class="metadata">
+                    <div><strong>Authors:</strong> Zilin Lu, Qingjie Zeng, Mengkang Lu, Geng Chen, Yong Xia</div>
+                    <div>•</div>
+                    <div>Northwestern Polytechnical University</div>
+                </div>
+            </div>
+
+            <!-- SLIDE 2: CONTEXT - DATA SCARCITY -->
+            <div class="slide" id="slide-2">
+                <h2 class="slide-heading">Data Scarcity in Medical VQA</h2>
+                <div class="grid-3">
+                    <div class="card">
+                        <h4>1. Annotation Costs</h4>
+                        <p>Labeling medical images requires highly specialized expertise from radiologists or pathologists. A single verified sample is extremely resource-intensive to produce.</p>
+                    </div>
+                    <div class="card" style="background-color: var(--accent-teal-light); border-color: rgba(13, 148, 136, 0.15)">
+                        <h4 style="color: var(--accent-teal)">2. Massive Dataset Gaps</h4>
+                        <p>General domain datasets (like VQAv2) contain over 265,000 images. Downstream medical datasets like VQA-RAD contain only 315 radiological images, creating a scale bottleneck.</p>
+                    </div>
+                    <div class="card" style="background-color: var(--accent-red-light); border-color: rgba(220, 38, 38, 0.15)">
+                        <h4 style="color: var(--accent-red)">3. Alignment Fragility</h4>
+                        <p>Because of this data scarcity, models are highly prone to overfitting when fine-tuned directly on target QA pairs, failing to transfer upstream knowledge.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 3: THE CORE CHALLENGE - THE SEMANTIC GAP -->
+            <div class="slide" id="slide-3">
+                <h2 class="slide-heading">The Semantic Gap Problem</h2>
+                <div class="grid-2">
+                    <div>
+                        <ul>
+                            <li><strong>Upstream Pre-Training:</strong> Model is pre-trained on generic image-caption pairs (e.g., ROCO, MedICaT). The text consists of high-level descriptive summaries.</li>
+                            <li><strong>Downstream Fine-Tuning:</strong> Model targets specific clinical question-answer pairs. The vocabulary and grammar are conversational, query-driven, and local.</li>
+                            <li><strong>Semantic Discrepancy:</strong> High-frequency words differ heavily (e.g., words like "right" or "pleural" appear 220,000 times more in captions than in VQA questions).</li>
+                        </ul>
+                    </div>
+                    <div class="viz-container">
+                        <!-- Word distribution cloud / bar chart comparison -->
+                        <svg viewBox="0 0 300 200" width="100%" height="100%">
+                            <rect x="5" y="5" width="290" height="190" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5"/>
+                            <text x="150" y="24" font-size="10" font-weight="bold" fill="#111827" text-anchor="middle">Vocabulary Discrepancy (Word Frequency)</text>
+                            
+                            <!-- Upstream captions bar -->
+                            <rect x="30" y="55" width="240" height="40" rx="6" fill="#eff6ff" stroke="#bfdbfe"/>
+                            <text x="40" y="72" font-size="9" font-weight="bold" fill="#2563eb">Upstream Pre-training Captions</text>
+                            <text x="40" y="85" font-size="8" fill="#4b5563">"effusion" (154k) | "pleural" (197k) | "right" (220k)</text>
+                            
+                            <!-- Downstream VQA bar -->
+                            <rect x="30" y="125" width="240" height="40" rx="6" fill="#f0fdfa" stroke="#99f6e4"/>
+                            <text x="40" y="142" font-size="9" font-weight="bold" fill="#0d9488">Downstream VQA Questions</text>
+                            <text x="40" y="155" font-size="8" fill="#4b5563">"what" (16k) | "does" (11k) | "where" (1.6k)</text>
+                            
+                            <path d="M 150 95 L 150 125" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="3,3"/>
+                            <polygon points="146,110 150,115 154,110" fill="#ef4444"/>
+                            <text x="150" y="112" font-size="7" font-weight="bold" fill="#ef4444" text-anchor="middle">Semantic Gap</text>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 4: PROPOSED SOLUTION - DSAP OVERVIEW -->
+            <div class="slide" id="slide-4">
+                <h2 class="slide-heading">Dynamic Semantic-Adaptive Prompting</h2>
+                <div class="callout-box">
+                    <h3>The DSAP Framework</h3>
+                    <p>Instead of direct fine-tuning, DSAP bridges the semantic gap using prompt learning. It employs learnable semantic prompts to align the model outputs with domain-specific contexts and adjusts candidate weights based on question structures.</p>
+                </div>
+                <div class="grid-3" style="margin-top: 30px;">
+                    <div class="card" style="text-align: center;">
+                        <h4 style="font-size: 1rem;">1. Semantic Alignment Prompting (SAP)</h4>
+                        <p>Injects trainable visual and textual prompts during fine-tuning to adapt representations.</p>
+                    </div>
+                    <div class="card" style="text-align: center; background-color: var(--accent-teal-light); border-color: rgba(13, 148, 136, 0.15)">
+                        <h4 style="font-size: 1rem; color: var(--accent-teal)">2. Dynamic Question-Aware Prompting (DQAP)</h4>
+                        <p>Constrains the output selection using question grammatical prefixes.</p>
+                    </div>
+                    <div class="card" style="text-align: center;">
+                        <h4 style="font-size: 1rem;">3. Pre-trained Foundations</h4>
+                        <p>Trained using Masked Language (MLM) and Masked Image (MIM) modeling tasks.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 5: FRAMEWORK ARCHITECTURE DIAGRAM -->
+            <div class="slide" id="slide-5">
+                <h2 class="slide-heading">DSAP Framework Overview</h2>
+                <div class="viz-container" style="min-height: 400px; display: flex; justify-content: center; align-items: center;">
+                    <img src="framework_fig3.png" style="max-height: 90%; max-width: 95%; object-fit: contain; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border-radius: 12px; border: 1px solid var(--border-color);" alt="DSAP Framework Overview (Fig. 3)">
+                </div>
+            </div>
+
+            <!-- SLIDE 6: MODEL ARCHITECTURE -->
+            <div class="slide" id="slide-6">
+                <h2 class="slide-heading">Model Architecture Overview</h2>
+                <div class="grid-2">
+                    <div>
+                        <ul>
+                            <li><strong>Uni-Modal Encoders:</strong> Uses ViT (Vision Transformer) to segment images into patches, and RoBERTa to encode queries.</li>
+                            <li><strong>Dual-Stream Transformer:</strong> A multi-layer fusion module where cross-attention links visual features to query representations.</li>
+                            <li><strong>Classification Head:</strong> Selects the optimal answer from a dynamically scaled candidate distribution.</li>
+                        </ul>
+                    </div>
+                    <div class="viz-container">
+                        <!-- Flow Diagram of VLM components -->
+                        <svg viewBox="0 0 260 200" width="100%" height="100%">
+                            <!-- Visual Encoder -->
+                            <rect x="20" y="20" width="80" height="35" rx="6" fill="#f3f4f6" stroke="#cbd5e1" stroke-width="1.5"/>
+                            <text x="60" y="42" font-size="9" font-weight="bold" fill="#374151" text-anchor="middle">ViT Encoder</text>
+                            
+                            <!-- Text Encoder -->
+                            <rect x="150" y="20" width="90" height="35" rx="6" fill="#f3f4f6" stroke="#cbd5e1" stroke-width="1.5"/>
+                            <text x="195" y="42" font-size="9" font-weight="bold" fill="#374151" text-anchor="middle">RoBERTa Encoder</text>
+                            
+                            <!-- Fusion Module -->
+                            <rect x="60" y="85" width="130" height="40" rx="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+                            <text x="125" y="105" font-size="9" font-weight="bold" fill="#1e40af" text-anchor="middle">Dual-Stream Fusion</text>
+                            <text x="125" y="117" font-size="7" fill="#1e40af" text-anchor="middle">Cross-Attention layers</text>
+                            
+                            <!-- Outputs -->
+                            <path d="M 60 55 L 90 85" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+                            <path d="M 190 55 L 160 85" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+                            
+                            <path d="M 125 125 L 125 155" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+                            <polygon points="121,148 125,155 129,148" fill="#94a3b8"/>
+                            
+                            <!-- Classifier -->
+                            <rect x="75" y="155" width="100" height="30" rx="6" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.5"/>
+                            <text x="125" y="174" font-size="9" font-weight="bold" fill="#0f766e" text-anchor="middle">Classifier Head</text>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 7: METHODOLOGY - SEMANTIC ALIGNMENT PROMPTING (SAP) -->
+            <div class="slide" id="slide-7">
+                <h2 class="slide-heading">Semantic Alignment Prompting (SAP)</h2>
+                <div class="grid-2">
+                    <div>
+                        <ul>
+                            <li><strong>Visual Prompts (Nv = 30):</strong> Pre-pends 30 learnable tokens directly to visual patch embeddings. These act as adapter networks during backpropagation to calibrate the image representations.</li>
+                            <li><strong>Textual Prompts (Nq = 8):</strong> Pre-pends 8 learnable continuous tokens to the question word embeddings.</li>
+                            <li><strong>Unified Concatenation:</strong> Formally concatenates these learnable adapters on both visual and textual inputs before feeding them to the multimodal fusion layers.</li>
+                        </ul>
+                    </div>
+                    <div class="viz-container">
+                        <!-- Dual SAP Visualizer -->
+                        <div style="display: flex; flex-direction: column; gap: 20px; width: 100%;">
+                            <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <div style="font-size: 0.75rem; font-weight: 700; margin-bottom: 5px; color: var(--accent-blue);">Visual Sequence:</div>
+                                <div style="font-family: monospace; font-size: 0.75rem; background: #f1f5f9; padding: 5px; border-radius: 4px;">
+                                    [ 30 Learnable Prompts ; Image Patches ]
+                                </div>
+                            </div>
+                            <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <div style="font-size: 0.75rem; font-weight: 700; margin-bottom: 5px; color: var(--accent-teal);">Textual Sequence:</div>
+                                <div style="font-family: monospace; font-size: 0.75rem; background: #f1f5f9; padding: 5px; border-radius: 4px;">
+                                    [ 8 Learnable Prompts ; Question Tokens ]
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 8: METHODOLOGY - DYNAMIC QUESTION-AWARE PROMPTING (DQAP) -->
+            <div class="slide" id="slide-8">
+                <h2 class="slide-heading">Dynamic Question-Aware Prompting (DQAP)</h2>
+                <div class="grid-2">
+                    <div>
+                        <ul>
+                            <li><strong>Interrogative Mapping:</strong> Matches the interrogative prefix pronoun (e.g., where, does, what, how) to a learnable prompt vector.</li>
+                            <li><strong>Pruning Answer Space:</strong> The model multiplies output logits element-wise with the prompt vector Pt, narrowing candidate answers down based on question structure.</li>
+                            <li><strong>Pruning Scale:</strong> prunes the original 517 unique VQA-RAD answers down to a small grammatical subset (e.g. only locations for "where").</li>
+                        </ul>
+                    </div>
+                    <div class="viz-container">
+                        <!-- DQAP concept layout -->
+                        <svg viewBox="0 0 280 180" width="100%" height="100%">
+                            <!-- Circle mapping -->
+                            <circle cx="70" cy="90" r="40" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+                            <text x="70" y="85" font-size="8" font-weight="bold" fill="#1e40af" text-anchor="middle">"where" prefix</text>
+                            <text x="70" y="98" font-size="7" fill="#4b5563" text-anchor="middle">prunes space</text>
+                            
+                            <path d="M 110 90 L 165 90" fill="none" stroke="#0d9488" stroke-width="2"/>
+                            <polygon points="160,86 168,90 160,94" fill="#0d9488"/>
+                            
+                            <!-- Pruned list -->
+                            <rect x="170" y="45" width="95" height="90" rx="8" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.5"/>
+                            <text x="217" y="62" font-size="8" font-weight="bold" fill="#0f766e" text-anchor="middle">Pruned Options</text>
+                            <text x="217" y="78" font-size="7" fill="#4b5563" text-anchor="middle">• left kidney</text>
+                            <text x="217" y="90" font-size="7" fill="#4b5563" text-anchor="middle">• pleural space</text>
+                            <text x="217" y="102" font-size="7" fill="#4b5563" text-anchor="middle">• brain stem</text>
+                            <text x="217" y="114" font-size="7" fill="#4b5563" text-anchor="middle">• (binary filtered)</text>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 9: PRIOR KNOWLEDGE PRE-TRAINING -->
+            <div class="slide" id="slide-9">
+                <h2 class="slide-heading">Prior Knowledge Pre-Training</h2>
+                <div class="step-panel">
+                    <div class="step-num">1</div>
+                    <div class="step-text">
+                        <h4>Masked Language Modeling (MLM)</h4>
+                        <p>Masks 15% of the descriptive text tokens. The model predicts the missing medical terms by leveraging both the surrounding text context and the accompanying visual features.</p>
+                    </div>
+                </div>
+                
+                <div class="step-panel">
+                    <div class="step-num">2</div>
+                    <div class="step-text">
+                        <h4>Masked Image Modeling (MIM)</h4>
+                        <p>Divides the scan into local patches and masks out 75% of them. The model is trained to reconstruct the original pixel values of the missing patches using the unmasked visual regions and textual clues.</p>
+                    </div>
+                </div>
+                
+                <div class="step-panel" style="border-color: rgba(37, 99, 235, 0.25); background-color: var(--accent-blue-light)">
+                    <div class="step-num" style="background-color: var(--accent-teal)">3</div>
+                    <div class="step-text">
+                        <h4>Joint Knowledge Representation</h4>
+                        <p>Pre-training forces the encoders to build shared, cross-modal representation tables that bind pathology shapes to corresponding clinical words before fine-tuning starts.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 10: PRE-TRAINING DATASETS -->
+            <div class="slide" id="slide-10">
+                <h2 class="slide-heading">Pre-Training Datasets</h2>
+                <div class="grid-3" style="margin-top: 20px;">
+                    <div class="card">
+                        <h4>ROCO</h4>
+                        <p><strong>81,000 pairs</strong></p>
+                        <p style="margin-top: 10px;">Medical image-caption pairs sourced from PubMed Central. Modalities include MRI, CT, and Angiography.</p>
+                    </div>
+                    <div class="card" style="background-color: var(--accent-teal-light); border-color: rgba(13, 148, 136, 0.15)">
+                        <h4 style="color: var(--accent-teal)">MedICaT</h4>
+                        <p style="color: var(--accent-teal)"><strong>210,000 pairs</strong></p>
+                        <p style="margin-top: 10px; color: var(--text-secondary)">Extracted from open-access journals, providing a large, diverse set of multimodal radiology observations.</p>
+                    </div>
+                    <div class="card">
+                        <h4>MIMIC-CXR</h4>
+                        <p><strong>377,110 images</strong></p>
+                        <p style="margin-top: 10px;">Large database of labeled chest X-ray images paired with complete clinical radiology reports.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 11: EVALUATION BENCHMARKS -->
+            <div class="slide" id="slide-11">
+                <h2 class="slide-heading">Evaluation Benchmarks</h2>
+                <table class="slide-table">
+                    <thead>
+                        <tr>
+                            <th>Dataset</th>
+                            <th>Image Types</th>
+                            <th>QA Count</th>
+                            <th>Key Characteristics</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>VQA-RAD</strong></td>
+                            <td>Radiological (Chest, Brain, Abdomen)</td>
+                            <td>3,515 pairs</td>
+                            <td>Meticulously verified by medical professionals. Covers 11 question types.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>SLAKE</strong></td>
+                            <td>MRI, CT, X-Ray (Organ focused)</td>
+                            <td>7,032 pairs</td>
+                            <td>Bilingual (English/Chinese). Spans 12 diseases and 39 organ regions.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>PathVQA</strong></td>
+                            <td>Histopathology Scans</td>
+                            <td>32,799 pairs</td>
+                            <td>Derived from textbook captions. Larger scale but highly specialized.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- SLIDE 12: COMPETING METHODS -->
+            <div class="slide" id="slide-12">
+                <h2 class="slide-heading">Competing Methods in Comparison</h2>
+                <div class="grid-3" style="margin-top: 20px;">
+                    <div class="card">
+                        <h4>1. General VQA</h4>
+                        <p>Classical architectures (SAN, MFB, BAN) applied directly to clinical settings without external knowledge transfer.</p>
+                    </div>
+                    <div class="card" style="background-color: var(--accent-teal-light); border-color: rgba(13, 148, 136, 0.15)">
+                        <h4 style="color: var(--accent-teal)">2. Meta-Learning</h4>
+                        <p style="color: var(--text-secondary)">MAML, MEVF, and MMQ architectures that learn weight initializations to adapt to small data samples.</p>
+                    </div>
+                    <div class="card">
+                        <h4>3. Medical VLP</h4>
+                        <p>Contrastive pre-trained VLMs (PubMedCLIP) and reconstruction models (M3AE, M2I2) that pre-align modalities.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 13: QUANTITATIVE RESULTS -->
+            <div class="slide" id="slide-13">
+                <h2 class="slide-heading">Quantitative Results Comparison</h2>
+                <div class="grid-2">
+                    <div>
+                        <ul>
+                            <li><strong>State-of-the-Art:</strong> DSAP sets the new baseline across VQA-RAD, SLAKE, and PathVQA.</li>
+                            <li><strong>VQA-RAD Accuracy:</strong> Reaches <strong>78.9%</strong> (exceeding M3AE's 77.1%).</li>
+                            <li><strong>SLAKE Accuracy:</strong> Reaches <strong>85.0%</strong> (exceeding M3AE's 82.8%).</li>
+                            <li><strong>PathVQA Accuracy:</strong> Reaches <strong>56.0%</strong> (exceeding M2I2's 54.8%).</li>
+                        </ul>
+                    </div>
+                    <div class="viz-container">
+                        <!-- Accuracy Bar Chart -->
+                        <div style="width: 100%; display: flex; flex-direction: column; gap: 15px; padding: 10px;">
+                            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); text-align: center;">Downstream Performance (Accuracy %)</div>
+                            <!-- Bar 1 -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 3px;">
+                                    <span>VQA-RAD (DSAP vs M3AE)</span>
+                                    <strong>78.9% vs. 77.1%</strong>
+                                </div>
+                                <div style="width: 100%; height: 16px; background-color: #f1f5f9; border-radius: 4px; overflow: hidden; border: 1px solid #cbd5e1;">
+                                    <div style="width: 78.9%; height: 100%; background-color: var(--accent-blue);"></div>
+                                </div>
+                            </div>
+                            <!-- Bar 2 -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 3px;">
+                                    <span>SLAKE (DSAP vs M3AE)</span>
+                                    <strong>85.0% vs. 82.8%</strong>
+                                </div>
+                                <div style="width: 100%; height: 16px; background-color: #f1f5f9; border-radius: 4px; overflow: hidden; border: 1px solid #cbd5e1;">
+                                    <div style="width: 85.0%; height: 100%; background-color: var(--accent-teal);"></div>
+                                </div>
+                            </div>
+                            <!-- Bar 3 -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 3px;">
+                                    <span>PathVQA (DSAP vs M2I2)</span>
+                                    <strong>56.0% vs. 54.8%</strong>
+                                </div>
+                                <div style="width: 100%; height: 16px; background-color: #f1f5f9; border-radius: 4px; overflow: hidden; border: 1px solid #cbd5e1;">
+                                    <div style="width: 56.0%; height: 100%; background-color: var(--accent-blue);"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 14: QUALITATIVE VISUAL ANALYSIS -->
+            <div class="slide" id="slide-14">
+                <h2 class="slide-heading">Qualitative Case Studies (VQA-RAD)</h2>
+                <div class="grid-2">
+                    <div>
+                        <ul>
+                            <li><strong>DQAP Grammatical Corrections:</strong> Filters out location answers when the pronoun requests modals (and vice-versa).</li>
+                            <li><strong>Case 1 (Chest):</strong> "Is this a pneumonia vs pleural effusion?" -> SAP: "Pleural effusion" (Incomplete). SAP+DQAP: <strong>"Pneumonia"</strong> (Correct).</li>
+                            <li><strong>Case 2 (Brain):</strong> "To which side is the trachea deviated?" -> SAP: "The pancreatic head" (Wrong context). SAP+DQAP: <strong>"Left"</strong> (Correct location).</li>
+                        </ul>
+                    </div>
+                    <div class="viz-container">
+                        <table class="slide-table" style="font-size: 0.75rem; width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Question Prefix</th>
+                                    <th>SAP Output (No DQAP)</th>
+                                    <th>SAP + DQAP Output</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>"Is there..." (Presence)</td>
+                                    <td>"No" (Incorrect)</td>
+                                    <td><strong>"No"</strong> (Corrected constraint)</td>
+                                </tr>
+                                <tr>
+                                    <td>"Which side..." (Location)</td>
+                                    <td>"Pancreatic head" (Wrong context)</td>
+                                    <td><strong>"Left"</strong> (Pruned location)</td>
+                                </tr>
+                                <tr>
+                                    <td>"Is this a A vs B..."</td>
+                                    <td>"Pleural effusion" (Partial)</td>
+                                    <td><strong>"Pneumonia"</strong> (Corrected alternative)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 15: DISCUSSION & CLINICAL IMPLICATIONS -->
+            <div class="slide" id="slide-15">
+                <h2 class="slide-heading">Takeaways & Future Clinical Challenges</h2>
+                <div class="grid-2">
+                    <div>
+                        <ul>
+                            <li><strong>Parameter Efficiency:</strong> DSAP consists of 374M parameters but introduces minimal overhead (SAP adds only 29k; DQAP adds 4k parameters).</li>
+                            <li><strong>Privacy Safeguards:</strong> Public training corpora must be anonymized. Future setups will require federated learning policies.</li>
+                            <li><strong>Adaptability Constraints:</strong> Current VLMs rely heavily on English text. Localized translation modules are required for clinical integration.</li>
+                        </ul>
+                    </div>
+                    <div class="card" style="background-color: var(--accent-blue-light); border-color: rgba(37, 99, 235, 0.15); height: 100%; display: flex; flex-direction: column; justify-content: center; padding: 25px;">
+                        <h4 style="margin-bottom: 12px; font-size: 1.15rem;">Key Contribution Summary</h4>
+                        <p style="font-size: 0.9rem; line-height: 1.45; color: var(--text-secondary);">
+                            DSAP successfully addresses the medical pre-training vs. fine-tuning semantic gap. Through continuous prompt adapters (SAP) and grammatical logit constraints (DQAP), it achieves state-of-the-art diagnostic accuracy under strict medical data constraints.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- BOTTOM NAVIGATION CONTROLS BAR -->
+        <div class="nav-bar">
+            <!-- Counter -->
+            <div class="slide-counter">Slide <span id="current-slide-num">1</span> of 15</div>
+
+            <!-- Keyboard instructions -->
+            <div class="kbd-info">
+                <span>Navigate:</span>
+                <kbd class="kbd">←</kbd>
+                <kbd class="kbd">→</kbd>
+            </div>
+
+            <!-- Buttons -->
+            <div class="controls">
+                <button class="btn" id="prev-btn" onclick="prevSlide()" disabled>←</button>
+                <button class="btn" id="next-btn" onclick="nextSlide()">→</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 15;
+
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const slideCounter = document.getElementById('current-slide-num');
+
+        function updateControls() {
+            // Update counter text
+            slideCounter.textContent = currentSlide;
+            
+            // Disable/enable buttons based on index bounds
+            prevBtn.disabled = (currentSlide === 1);
+            nextBtn.disabled = (currentSlide === totalSlides);
+        }
+
+        function showSlide(index) {
+            // Remove active class from current active slide
+            document.querySelector('.slide.active').classList.remove('active');
+            
+            // Set target active
+            document.getElementById(`slide-${index}`).classList.add('active');
+            
+            currentSlide = index;
+            updateControls();
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                showSlide(currentSlide + 1);
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 1) {
+                showSlide(currentSlide - 1);
+            }
+        }
+
+        // Add keyboard arrow keys binding
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowRight') {
+                nextSlide();
+            } else if (event.key === 'ArrowLeft') {
+                prevSlide();
+            }
+        });
+    </script>
+</body>
+</html>

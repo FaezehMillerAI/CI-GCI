@@ -1,0 +1,20 @@
+# Ignore massive datasets and zips
+data/
+*.zip
+Slake.zip
+
+# Ignore large PDFs and CSV data
+*.pdf
+*.csv
+
+# Ignore local trained model weights and evaluation outputs
+models/slake_vqa_model.pth
+models/inpainter.pth
+outputs/
+
+# Ignore Python caches
+__pycache__/
+*.pyc
+
+# Ignore OS junk
+.DS_Store
