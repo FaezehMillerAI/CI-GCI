@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import argparse
 import torch
 from torch.utils.data import DataLoader
@@ -169,6 +170,20 @@ def main():
     print(f"| **Attention-guided Saliency** | {attn_vqa['accuracy']:.4f} | {attn_ece:.4f} |")
     print(f"| **CI-GCI (Ours)** | {ours_vqa['accuracy']:.4f} | {ours_ece:.4f} |")
     print("==================================================")
+    
+    # Save raw metrics for dynamic table updates
+    os.makedirs("outputs/tables", exist_ok=True)
+    metrics = {
+        "dataset": args.dataset,
+        "baseline_acc": float(base_vqa["accuracy"]),
+        "baseline_ece": float(base_ece),
+        "attn_acc": float(attn_vqa["accuracy"]),
+        "attn_ece": float(attn_ece),
+        "ours_acc": float(ours_vqa["accuracy"]),
+        "ours_ece": float(ours_ece)
+    }
+    with open(f"outputs/tables/benchmark_raw_{args.dataset}.json", "w") as f:
+        json.dump(metrics, f, indent=4)
 
 if __name__ == "__main__":
     main()
