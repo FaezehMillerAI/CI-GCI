@@ -123,3 +123,25 @@ display(Image(filename="outputs/reliability_diagram_vqa_rad.png"))
 print("\n--- Visual Proof Sheet: SLAKE Patient 0 ---")
 display(Image(filename="outputs/proofs/proof_slake_sample_0.png"))
 ```
+
+---
+
+### **Cell 8: Generate Publication Tables & Ablation Studies**
+Triggers the results generator to compile and display the 7 publication-ready tables (including Main comparisons, Grounding quality, and Ablation breakdowns) for your paper.
+
+```python
+# 1. Generate tables
+!python3 evaluation/result_table_generator.py
+
+# 2. Display the main SOTA results table
+with open("outputs/tables/table_1_main_comparison.md", "r") as f:
+    print("=== MAIN SOTA COMPARISON TABLE ===")
+    print(f.read())
+
+print("\n" + "="*80 + "\n")
+
+# 3. Display the module ablation table
+with open("outputs/tables/ablation_1_modules.md", "r") as f:
+    print("=== CORE MODULES ABLATION STUDY ===")
+    print(f.read())
+```
