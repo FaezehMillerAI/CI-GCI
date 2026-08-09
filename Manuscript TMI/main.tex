@@ -150,6 +150,34 @@ The CI-GCI framework is implemented in PyTorch 2.x \cite{paszke2019pytorch} and 
 \subsection{Main Med-VQA Performance and Baseline Comparison}
 We evaluate the performance of the proposed CI-GCI framework against baseline architectures and published State-of-the-Art (SOTA) medical vision-language models across three standard VQA datasets: VQA-RAD \cite{lau2018}, SLAKE \cite{liu2021}, and PathVQA \cite{he2020}. As detailed in Table~\ref{tab:main_comparison}, CI-GCI achieves substantial performance gains across all clinical metrics, setting new SOTA benchmark records of 93.37\% Exact Match Accuracy on VQA-RAD (+7.4\% absolute improvement over recent baselines) and 81.01\% Exact Match Accuracy on SLAKE.
 
+To rigorously contextualize our performance against prior published literature, Table~\ref{tab:sota_benchmark} compares CI-GCI directly with 10 published state-of-the-art Med-VQA models on identical benchmark test splits. These include traditional feature-alignment models (BAN+MEPA \cite{nguyen2019}, CP-VQA \cite{lili2022}), pre-trained vision-language foundation models (LLaVA-Med \cite{liu2023llavamed}, ChatCAD+ \cite{wang2024chatcadplus}, OmniMedVQA \cite{hu2024omnimedvqa}), and recent causal debiasing frameworks (DeCoCT \cite{wan2025decoct}, CIMB-MVQA \cite{liu2025cimb}, DE-CaGI \cite{liu2026decagi}).
+
+\begin{table}[h]
+\caption{Benchmark Comparison Against Published SOTA Models}
+\label{tab:sota_benchmark}
+\centering
+\begin{tabular}{lcccc}
+\toprule
+Model & Venue / Year & VQA-RAD Acc & SLAKE Acc & PathVQA Acc \\
+\midrule
+BAN + MEPA \cite{nguyen2019} & MICCAI 2019 & 0.6980 & -- & -- \\
+CP-VQA \cite{lili2022} & IEEE TMI 2022 & 0.7420 & 0.7450 & 0.5820 \\
+Q2ATransformer \cite{wang2024mmql} & MICCAI 2023 & 0.7920 & 0.7780 & -- \\
+LLaVA-Med \cite{liu2023llavamed} & NeurIPS 2023 & 0.8040 & -- & 0.6240 \\
+ChatCAD+ \cite{wang2024chatcadplus} & IEEE TMI 2024 & 0.8260 & -- & -- \\
+OmniMedVQA \cite{hu2024omnimedvqa} & CVPR 2024 & -- & 0.7840 & -- \\
+Med-BiasX \cite{zhu2025medbiasx} & MICCAI 2025 & 0.8310 & -- & -- \\
+DeCoCT \cite{wan2025decoct} & MICCAI 2025 & 0.7830 & 0.7920 & -- \\
+CIMB-MVQA \cite{liu2025cimb} & MedIA 2026 & 0.7940 & 0.7910 & -- \\
+DE-CaGI \cite{liu2026decagi} & MedIA 2026 & 0.8480 & 0.7980 & 0.6510 \\
+\midrule
+\textbf{Proposed CQC-Net (CI-GCI)} & \textbf{IEEE TMI (Ours)} & \textbf{0.9337} & \textbf{0.8101} & \textbf{0.6780} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+As demonstrated in Table~\ref{tab:sota_benchmark}, CI-GCI outperforms the best published causal debiasing model (DE-CaGI \cite{liu2026decagi}) by +8.57\% on VQA-RAD (93.37\% vs. 84.80\%), +1.21\% on SLAKE (81.01\% vs. 79.80\%), and +2.70\% on PathVQA (67.80\% vs. 65.10\%). This significant margin confirms that replacing feature-level interventions with physical generative counterfactual inpainting effectively resolves persistent visual shortcuts that continue to limit prior SOTA models.
+
 \begin{table*}[t]
 \caption{Main Comparison on Standard Med-VQA Datasets}
 \label{tab:main_comparison}
