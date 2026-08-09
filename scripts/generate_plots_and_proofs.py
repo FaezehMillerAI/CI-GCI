@@ -16,6 +16,7 @@ from utils.slake_loader import SlakeCausalDataset, causal_collate_fn
 from utils.vqa_rad_loader import VQARadCausalDataset
 from utils.ms_cxr_loader import MSCXRCausalDataset
 from utils.heal_loader import HealMedVQADataset
+from utils.vocab import load_vocab, build_answer_vocab
 from models.cqc_net import CQCNet
 from models.inpainter import CounterfactualInpainter
 from models.causal_decoder import CausalContrastiveDecoder
@@ -174,9 +175,21 @@ def main():
         dataset = HealMedVQADataset(split="test")
         collate = causal_collate_fn
         
+    # Load answer vocabulary
+    vocab_path = f"models/{args.dataset}_vocab.json"
+    if not os.path.exists(vocab_path) and args.dataset in ["ms_cxr", "heal"]:
+        vocab_path = "models/slake_vocab.json"
+        
+    if os.path.exists(vocab_path):
+        ans2idx, idx2ans = load_vocab(vocab_path)
+    else:
+        raw_items = dataset.data if hasattr(dataset, "data") else []
+        ans2idx, idx2ans = build_answer_vocab(raw_items)
+
     # Load models
     config = load_config("configs/baseline_vqa.yaml")
     config["model"]["num_aux_questions"] = 0
+    config["model"]["num_classes"] = max(2, len(ans2idx))
     vqa_model = CQCNet(config).to(device)
     
     chk_path = f"models/{args.dataset}_vqa_model.pth"
@@ -184,7 +197,11 @@ def main():
         chk_path = "models/slake_vqa_model.pth"
         
     if os.path.exists(chk_path):
-        vqa_model.load_state_dict(torch.load(chk_path, map_location=device), strict=False)
+        try:
+            vqa_model.load_state_dict(torch.load(chk_path, map_location=device), strict=False)
+        except Exception as e:
+            print(f"Warning: strict load failed, loading matching keys: {e}")
+            vqa_model.load_state_dict(torch.load(chk_path, map_location=device), strict=False)
         
     inpainter = CounterfactualInpainter(bilinear=True).to(device)
     if os.path.exists("models/inpainter.pth"):
