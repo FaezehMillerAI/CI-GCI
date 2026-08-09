@@ -120,20 +120,26 @@ When the visual evidence is ambiguous or counterfactual contrast is insufficient
 
 ---
 
-## IV. Experimental Setup & Reproducibility (R)
+## IV. Experimental Setup and Datasets
 
-Following *Metrics Reloaded* [7] guidelines, we evaluate complementary metrics across four public multi-center datasets:
+### A. Benchmark Dataset Characteristics and Demographics
+To rigorously evaluate the generalization, calibration, and hallucination resistance of the proposed CI-GCI framework across diverse clinical imaging modalities and anatomical sites, we conduct experiments on four public, multi-center benchmark datasets: VQA-RAD [21], SLAKE [20], MS-CXR [22], and Kvasir-VQA-x1 [23]. Each dataset provides complementary clinical challenges ranging from closed radiological diagnostic queries to spatial phrase grounding and multi-tiered endoscopic causal reasoning.
 
-### A. Datasets
-1. **VQA-RAD** [21]: 315 radiological images, 3,515 QA pairs (Chest X-ray, Head CT, Abdominal MRI).
-2. **SLAKE** [20]: 642 semantically annotated images, 14,028 QA pairs.
-3. **MS-CXR** [22]: 1,162 chest X-ray phrase grounding pairs.
-4. **Kvasir-VQA-x1** [23]: 1,500 endoscopic images evaluated across L1 (perception), L2 (localization), and L3 (causal reasoning).
+The VQA-RAD benchmark [21] comprises 315 radiological images paired with 3,515 clinically generated question-answer pairs curated by board-certified radiologists. The images span three major anatomical regions and modalities, including 104 chest radiographs, 107 head computed tomography (CT) scans, and 104 abdominal magnetic resonance imaging (MRI) scans. Questions are categorized into closed-ended queries (58.4% of the dataset, requiring binary Yes/No or candidate choice responses) and open-ended queries (41.6% of the dataset, requiring specific anatomical or pathological terms). To prevent patient-level data leakage, we adopt the standard split containing 3,064 training/validation QA pairs and 451 independent test QA pairs.
 
-### B. Implementation Details
-- **Backbones**: ViT-Base (`google/vit-base-patch16-224-in21k`) & PubMedBERT (`microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext`).
-- **Optimization**: AdamW with dual learning rate: $2.5 \times 10^{-5}$ for pre-trained backbones, $5 \times 10^{-4}$ for fusion and classification heads.
-- **Training**: 15 epochs, batch size 16, Cosine Annealing scheduler.
+The SLAKE dataset [20] represents a comprehensive, semantically annotated medical VQA benchmark containing 642 images and 14,028 QA pairs. SLAKE incorporates detailed spatial annotations, including bounding boxes and pixel-level semantic segmentation masks for organ structures and pathological lesions across chest, abdominal, and brain scans. The clinical questions cover diverse reasoning types, including organ identification, spatial location, presence detection, and plane orientation (coronal, sagittal, axial). We utilize the official train, validation, and test splits (consisting of 70% training, 15% validation, and 15% test samples) ensuring strict patient-level isolation between splits.
+
+The MS-CXR dataset [22] provides specialized visual phrase grounding annotations for chest radiograph interpretation. It consists of 1,162 image-text phrase pairs extracted from MIMIC-CXR, where clinical report findings (such as pulmonary consolidation, pleural effusion, or pneumothorax) are explicitly linked to bounding box spatial coordinates annotated by expert radiologists. MS-CXR evaluates the visual attribution and anatomical grounding precision of the Gaze-Guided ROI Locator (GGRL) module under complex multi-pathology conditions.
+
+The Kvasir-VQA-x1 benchmark [23] evaluates gastrointestinal endoscopic visual question answering across multi-tiered reasoning complexity levels. Containing 1,500 endoscopic images and 6,500 QA pairs, Kvasir-VQA-x1 categorizes questions into Level 1 (perception and anatomical feature detection), Level 2 (spatial localization and polyp/lesion site identification), and Level 3 (causal clinical reasoning regarding pathology severity and intervention recommendations). This multi-level structure provides a rigorous platform for evaluating the Causal Contrastive Decoder (CCD) under escalating reasoning demands.
+
+### B. Evaluation Metrics and Protocol
+In strict adherence to the *Metrics Reloaded* recommendations for biomedical image analysis validation [7], we evaluate model performance using a comprehensive suite of complementary metrics to avoid misleading conclusions drawn from single-metric evaluations. For overall VQA accuracy, we report Exact Match Accuracy alongside Macro-F1 and Weighted-F1 scores to account for class imbalance across candidate answer vocabularies. Open-ended generation quality is assessed using BLEU-4, ROUGE-L, and BERTScore-F1 metrics.
+
+Visual grounding and attribution quality are evaluated using the Pointing Game accuracy, Intersection over Union (IoU), and Dice similarity coefficients against ground-truth spatial masks. Model calibration and confidence reliability are quantified using Expected Calibration Error (ECE), Maximum Calibration Error (MCE), and Brier Score. Hallucination detection performance is evaluated using Precision, Recall, F1 Score, Area Under the Receiver Operating Characteristic curve (AUROC), Area Under the Precision-Recall Curve (AUPRC), and False Positive Rate at 95% True Positive Rate (FPR@95TPR). Selective abstention efficacy is measured across coverage-risk trade-off curves, evaluating clinical risk at predefined coverage operational thresholds $\tau_1$ and $\tau_2$.
+
+### C. Implementation and Training Protocol
+The CI-GCI framework is implemented in PyTorch 2.x and Hugging Face Transformers. The visual encoder utilizes a dual-scale Vision Transformer (`google/vit-base-patch16-224-in21k`) initialized with pre-trained ImageNet-21k weights, while the text encoder employs PubMedBERT (`microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext`). Model optimization is conducted using AdamW with a dual learning rate schedule: pre-trained backbones are fine-tuned with a lower learning rate of $2.5 \times 10^{-5}$ to allow cross-modal feature alignment, whereas multimodal fusion, inpainting, and classification heads are trained with a learning rate of $5.0 \times 10^{-4}$. Models are trained for 15 epochs using a Cosine Annealing learning rate scheduler with a linear warm-up phase of 2 epochs and a batch size of 16 on NVIDIA Tesla GPUs. Full source code, pre-trained weights, and automated execution scripts are provided in the public repository for complete reproducibility.
 
 ---
 
