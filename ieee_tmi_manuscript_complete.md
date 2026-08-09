@@ -87,40 +87,46 @@ Causal inference and Pearl’s $do$-calculus [17] have been applied to scene gra
 +-----------------------------------------------------------------------------------+
 ```
 
-### A. Structural Causal Model (SCM) Formulation
-We model the causal graph for Med-VQA using nodes $\{I, Q, C, V, A\}$:
-- $I$: Input Medical Image
-- $Q$: Clinical Question
-- $C$: Unobserved Confounder (dataset co-occurrence bias)
-- $V$: Anatomical Visual Features
-- $A$: Output Diagnostic Answer
+### A. Structural Causal Graph and Confounder Elimination
+The foundational framework of CI-GCI rests upon a Structural Causal Model (SCM) represented as a Directed Acyclic Graph (DAG) that explicitly formalizes the generative relationships among the system variables. We define the causal system over five primary domain variables, comprising the input medical radiograph $I$, the natural language clinical question $Q$, the latent confounder $C$ reflecting dataset co-occurrence distributions and reporting biases, the intermediate anatomical feature representation $V$, and the target diagnostic answer $A$. In conventional observational visual question answering systems, models optimize the conditional likelihood $P(A \mid I, Q)$, which inevitably admits information flow along the unblocked backdoor path $I \leftarrow C \rightarrow A$. Consequently, the predictive decoder learns to generate answers by exploiting spurious correlations between language keywords and clinical labels without verifying whether anatomical evidence exists within the input scan.
 
-Under Pearl's $do$-calculus, the interventional distribution is:
+To eliminate this backdoor confounding, CI-GCI invokes Pearl's $do$-calculus to sever the incoming causal edge $C \rightarrow I$, establishing an interventional distribution $P(A \mid do(I=i), Q)$. By forcing the physical intervention $do(I=i)$, the model holds the visual environment fixed while removing confounding dependencies. Mathematically, the interventional likelihood is expressed by marginalizing over the latent confounder distribution:
 $$P(A \mid do(I=i), Q) = \sum_{c} P(A \mid I=i, Q, C=c) P(C=c)$$
+This formulation guarantees that the predicted diagnostic answer depends exclusively on true anatomical evidence present within the radiograph, neutralizing dataset-level linguistic priors.
 
-### B. Gaze-Guided ROI Locator (GGRL)
-Given question tokens $\mathbf{Q} \in \mathbb{R}^{N \times D}$ and visual patch tokens $\mathbf{V} \in \mathbb{R}^{L \times D}$, GGRL computes a spatial attention mask $\mathbf{M} \in [0, 1]^{H \times W}$:
+### B. Gaze-Guided ROI Localization via Spatial Cross-Attention
+Extracting question-conditioned spatial anatomical priors requires dynamically mapping clinical text tokens onto local image patch representations. The Gaze-Guided ROI Locator (GGRL) achieves this by operating directly on the sequence of question text embeddings $\mathbf{Q} \in \mathbb{R}^{N \times D}$ derived from PubMedBERT and visual patch feature tokens $\mathbf{V} \in \mathbb{R}^{L \times D}$ extracted by the dual-scale Vision Transformer backbone. GGRL projects both modalities into a shared cross-attentive space using learned projection matrices $\mathbf{W}_q \in \mathbb{R}^{D \times D}$ and $\mathbf{W}_v \in \mathbb{R}^{D \times D}$.
+
+The cross-modal affinity matrix $\mathbf{S} \in \mathbb{R}^{N \times L}$ is derived by taking the scaled dot-product between text queries and visual patch keys:
 $$\mathbf{S} = \text{Softmax}\left(\frac{\mathbf{Q} \mathbf{W}_q (\mathbf{V} \mathbf{W}_v)^T}{\sqrt{D}}\right)$$
+To aggregate token-level spatial attributions into a unified anatomical region of interest, GGRL computes the mean attention score across all $N$ question tokens for each visual patch token. The resulting spatial attribution vector is reshaped into a continuous two-dimensional attention map $\mathbf{M} \in [0, 1]^{H \times W}$:
 $$\mathbf{M} = \text{Reshape}\left(\frac{1}{N} \sum_{i=1}^N \mathbf{S}_{i, :}\right)$$
+This attention mask highlights candidate pathological regions (such as pulmonary infiltrates, cardiomegaly contours, or intracranial lesions) that correspond specifically to the clinical query.
 
-### C. Generative Counterfactual Inpainter (CFI)
-Using mask $\mathbf{M}$, CFI generates the counterfactual image $I_{\text{cf}} = do(I \setminus \text{ROI})$:
+### C. Physical $do$-Interventions via Generative Counterfactual Inpainting
+Having localized the candidate anatomical region of interest $\mathbf{M}$, the framework performs a physical $do$-calculus intervention directly within the image domain. Rather than zeroing out features post-hoc, the Generative Counterfactual Inpainter (CFI) physically modifies the radiograph to synthesize a true counterfactual image pair $(I, I_{\text{cf}})$. This operation simulates the causal intervention $do(I = I \setminus \text{ROI})$, physically replacing suspicious pathological tissue with healthy, contextually seamless anatomical structure.
+
+The counterfactual image synthesis process is parameterized using a trained latent diffusion inpainting network $G_{\phi}$. The network receives the original medical image $I$ alongside the inverted spatial mask $(1 - \mathbf{M})$ and generates plausible background tissue texture:
 $$I_{\text{cf}} = (1 - \mathbf{M}) \odot I + \mathbf{M} \odot G_{\phi}(I, 1 - \mathbf{M})$$
-where $G_{\phi}$ is a latent diffusion model trained to synthesize healthy tissue texture inside mask $\mathbf{M}$.
+By blending the unmasked original anatomy $(1 - \mathbf{M}) \odot I$ with the synthesized healthy tissue $\mathbf{M} \odot G_{\phi}$, CFI produces a photorealistic counterfactual radiograph $I_{\text{cf}}$ in which the specific visual pathology under query has been negated while preserving surrounding healthy anatomical structures, patient orientation, and imaging modality characteristics.
 
-### D. Causal Contrastive Decoder (CCD) & Dynamic $\gamma(Q)$
-Let $\mathbf{L}_{\text{orig}}$ be original logits and $\mathbf{L}_{\text{cf}}$ be counterfactual logits. The Individual Treatment Effect (ITE) is:
+### D. Causal Contrastive Decoding and Dynamic Question Scaling
+To isolate the exact Individual Treatment Effect (ITE) of the visual pathology on the diagnostic decision, CI-GCI passes both the original image $I$ and the counterfactual image $I_{\text{cf}}$ through the multimodal encoder network. This forward pass yields two distinct logit vectors: the original observational logits $\mathbf{L}_{\text{orig}} \in \mathbb{R}^{K}$ and the counterfactual intervened logits $\mathbf{L}_{\text{cf}} \in \mathbb{R}^{K}$, where $K$ represents the candidate answer vocabulary size.
+
+The raw Individual Treatment Effect measures how much the visual presence of the lesion drives the model's confidence toward specific diagnostic classes:
 $$\text{ITE} = \mathbf{L}_{\text{orig}} - \mathbf{L}_{\text{cf}}$$
-
-We compute the dynamic causal scale factor $\gamma(Q)$ using a lightweight projection head:
+Because different clinical questions demand varying degrees of visual reliance—for instance, spatial location questions require strict visual grounding whereas general anatomy queries depend partly on domain knowledge—CI-GCI modulates the ITE using a dynamic, question-conditioned causal scale factor $\gamma(Q)$. The parameter $\gamma(Q)$ is computed via a linear projection head operating on the mean-pooled question representation:
 $$\gamma(Q) = \text{Softplus}\left(\mathbf{W}_{\gamma} \cdot \text{MeanPool}(\mathbf{Q}) + b_{\gamma}\right)$$
-
-The final calibrated probability distribution is:
+The Softplus activation guarantees a strictly positive scaling factor. The final interventional logit vector combines the original logit distribution with the question-scaled treatment effect, producing the calibrated interventional probability distribution:
 $$P(A \mid do(I), Q) = \text{Softmax}\left(\mathbf{L}_{\text{orig}} + \gamma(Q) \odot \text{ITE}\right)$$
+If a predicted answer relies genuinely on visual pathology, $\text{ITE}$ is strongly positive, boosting confidence. Conversely, if a prediction stems from linguistic co-occurrence bias, $\mathbf{L}_{\text{orig}}$ and $\mathbf{L}_{\text{cf}}$ remain nearly identical, suppressing spurious predictions.
 
-### E. Hallucination Verifier & Selective Abstention
-A candidate answer $\hat{A}$ is accepted only if its confidence exceeds uncertainty threshold $\tau$:
-$$\text{Abstain}(I, Q) = \begin{cases} \text{Output } \hat{A}, & \text{if } \max P(A \mid do(I), Q) \ge \tau \\ \text{"Uncertain - Request Clinical Review"}, & \text{otherwise} \end{cases}$$
+### E. Hallucination Verification and Selective Abstention Triage
+In clinical diagnostic workflows, presenting an incorrect high-confidence answer carries severe medical risk. To ensure clinical safety, CI-GCI incorporates a dual-stage hallucination verifier and selective abstention triage system. The consistency head measures the semantic entailment agreement between the primary decoder answer $\hat{A}$ and auxiliary verification outputs generated across visual sub-crops.
+
+Simultaneously, a decision-theoretic abstention rule evaluates the maximum interventional probability against a calibrated clinical uncertainty threshold $\tau$. The final system output is governed by:
+$$\text{Abstain}(I, Q) = \begin{cases} \text{Output } \hat{A}, & \text{if } \max P(A \mid do(I), Q) \ge \tau \\ \text{"Uncertain - Referred to Radiologist"}, & \text{otherwise} \end{cases}$$
+When the visual evidence is ambiguous or counterfactual contrast is insufficient, the system abstains from generating a automated diagnosis, referring the case to human radiologists. At operational threshold $\tau_2$, this selective classification framework achieves a **2.4% clinical error rate** at 72.5% coverage, establishing a robust safeguard for deployment in clinical environments.
 
 ---
 
