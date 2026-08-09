@@ -165,14 +165,18 @@ def main():
                 attn_confidences.append(np.max(attn_prob))
                 
     # Calculate Metrics
+    base_is_correct = (np.array(baseline_preds) == np.array(original_gts_str)).astype(np.float32)
+    attn_is_correct = (np.array(attn_preds) == np.array(original_gts_str)).astype(np.float32)
+    ours_is_correct = (np.array(causal_preds) == np.array(original_gts_str)).astype(np.float32)
+
     base_vqa = compute_vqa_core_metrics(baseline_preds, original_gts_str)
-    base_ece, _ = compute_ece(np.array(baseline_confidences), np.array(ground_truths_int))
+    base_ece, _ = compute_ece(np.array(baseline_confidences), base_is_correct)
     
     attn_vqa = compute_vqa_core_metrics(attn_preds, original_gts_str)
-    attn_ece, _ = compute_ece(np.array(attn_confidences), np.array(ground_truths_int))
+    attn_ece, _ = compute_ece(np.array(attn_confidences), attn_is_correct)
     
     ours_vqa = compute_vqa_core_metrics(causal_preds, original_gts_str)
-    ours_ece, _ = compute_ece(np.array(causal_confidences), np.array(ground_truths_int))
+    ours_ece, _ = compute_ece(np.array(causal_confidences), ours_is_correct)
     
     print("\n==================================================")
     print(f"      COMPARISON BENCHMARK TABLE: {args.dataset.upper()}      ")

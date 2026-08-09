@@ -1,11 +1,16 @@
 import numpy as np
 
-def compute_ece(probs: np.ndarray, labels: np.ndarray, num_bins: int = 10):
+def compute_ece(probs: np.ndarray, correctness: np.ndarray, num_bins: int = 10):
     """
     Computes Expected Calibration Error (ECE) and Maximum Calibration Error (MCE).
-    probs: array of predicted class 1 probabilities.
-    labels: array of true binary class labels.
+    probs: array of predicted confidence probabilities [0, 1].
+    correctness: array of binary correctness (1 for correct prediction, 0 otherwise).
     """
+    correctness = np.array(correctness, dtype=np.float32)
+    # If integer class labels were passed by mistake, convert to binary accuracy
+    if np.max(correctness) > 1.0:
+        correctness = (correctness > 0).astype(np.float32)
+        
     bin_boundaries = np.linspace(0, 1, num_bins + 1)
     ece = 0.0
     mce = 0.0
@@ -23,7 +28,7 @@ def compute_ece(probs: np.ndarray, labels: np.ndarray, num_bins: int = 10):
         prop_in_bin = np.mean(in_bin)
         
         if prop_in_bin > 0:
-            accuracy_in_bin = np.mean(labels[in_bin])
+            accuracy_in_bin = np.mean(correctness[in_bin])
             avg_confidence_in_bin = np.mean(probs[in_bin])
             
             bin_error = np.abs(avg_confidence_in_bin - accuracy_in_bin)
