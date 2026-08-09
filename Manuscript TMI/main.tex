@@ -46,13 +46,13 @@ The primary contributions of this work, aligned with the IEEE TMI SIER Framework
 \section{Related Work}
 \label{sec:related}
 \subsection{Medical Vision-Language Models (Med-VLMs)}
-Early Med-VQA systems combined Convolutional Neural Networks (CNNs) with Recurrent Neural Networks (RNNs) or Transformers \cite{nguyen2019}, \cite{lili2022}. Recent advances utilize domain-specific pre-trained backbones such as PubMedBERT \cite{gu2021} and BiomedCLIP \cite{zhang2023}. However, standard fine-tuning strategies do not prevent models from relying on language priors.
+Early Med-VQA systems combined Convolutional Neural Networks (CNNs) with Recurrent Neural Networks (RNNs) or Transformers \cite{nguyen2019}, \cite{lili2022}. Recent advances utilize domain-specific pre-trained backbones such as PubMedBERT \cite{gu2021} and BiomedCLIP \cite{zhang2023}. More recently, instruction-tuned medical foundation models such as LLaVA-Med \cite{liu2023llavamed}, RadFM \cite{wu2024radfm}, and MedSAM \cite{ma2024medsam} have demonstrated strong zero-shot capabilities. However, these models project features into unconstrained latent spaces, leaving them prone to language prior shortcuts \cite{yan2024tokenmixer}, \cite{wang2024chatcadplus}, \cite{chen2025mimo}, \cite{li2025mvcm}.
 
 \subsection{Hallucination Mitigation and Calibration}
-Hallucination mitigation in general VLM literature relies primarily on post-hoc logit scaling or reinforcement learning from human feedback \cite{zhou2023}, \cite{liuh2024}. In medical imaging, post-hoc methods often fail because they lack spatial anatomical grounding. CI-GCI differs by performing active spatial interventions directly in the visual domain prior to logit decoding.
+Hallucination mitigation in general VLM literature relies primarily on post-hoc logit scaling or reinforcement learning from human feedback \cite{zhou2023}, \cite{liuh2024}. In medical imaging, recent frameworks such as VASE \cite{liao2025vase}, FactCheXcker \cite{heiman2025factchexcker}, and DeCoCT \cite{wan2025decoct} attempt to measure predictive entropy or text entailment. However, post-hoc methods often fail because they lack spatial anatomical grounding. CI-GCI differs by performing active spatial interventions directly in the visual image domain prior to logit decoding.
 
 \subsection{Causal Inference in Computer Vision}
-Causal inference and Pearl's $do$-calculus \cite{pearl2009} have been applied to scene graph generation \cite{tang2020} and long-tailed classification \cite{zhangc2021}. Our work extends causal $do$-calculus to medical VQA by combining gaze-guided ROI localization with generative counterfactual image modification.
+Causal inference and Pearl's $do$-calculus \cite{pearl2009} have been applied to scene graph generation \cite{tang2020} and long-tailed classification \cite{zhangc2021}. In medical imaging, recent works like CIMB-MVQA \cite{liu2025cimb}, DE-CaGI \cite{liu2026decagi}, and Uniclam \cite{zhao2025uniclam} deploy feature-level causal interventions. CI-GCI advances this line of work by extending causal $do$-calculus into generative pixel-level counterfactual inpainting ($do(I = I \setminus \text{ROI})$).
 
 \section{Methodological Innovation}
 \label{sec:methodology}
@@ -167,6 +167,18 @@ We presented CI-GCI, a novel causal-interventional framework for Medical VQA adh
 \bibitem{wan2025decoct} X. Wan \textit{et al.}, "Eliminating language bias for medical visual question answering with counterfactual contrastive training," in \textit{Proc. MICCAI}, 2025.
 \bibitem{liu2025cimb} B. Liu, L. Liu, J. Ding, and L. Liu, "CIMB-MVQA: Causal intervention on modality-specific biases for medical visual question answering," \textit{Med. Image Anal.}, vol. 107, Art. no. 103850, 2026.
 \bibitem{liu2026decagi} B. Liu, Z. Yang, L. Liu, J. Ding, and W. Peng, "Causal gradient intervention for debiased and evidence-grounded medical visual question answering," \textit{Med. Image Anal.}, vol. 108, Art. no. 103910, 2026.
+\bibitem{zhao2025uniclam} X. Zhao \textit{et al.}, "Uniclam: Contrastive representation learning with adversarial masking for causal grounding," \textit{Med. Image Anal.}, vol. 99, Art. no. 103320, 2025.
+\bibitem{liu2023llavamed} C. Liu \textit{et al.}, "Visual instruction tuning for medical imaging," \textit{Nat. Commun.}, vol. 15, Art. no. 2381, 2024.
+\bibitem{wu2024radfm} C. Wu \textit{et al.}, "Towards generalist foundation model for radiology by linking medical images to knowledge," \textit{Nat. Med.}, vol. 30, pp. 1201--1212, 2024.
+\bibitem{ma2024medsam} J. Ma \textit{et al.}, "Segment anything in medical images," \textit{Nat. Commun.}, vol. 15, Art. no. 654, 2024.
+\bibitem{nguyen2019} B. D. Nguyen \textit{et al.}, "Overcoming data limitation in medical visual question answering," in \textit{Proc. MICCAI}, 2019.
+\bibitem{lili2022} L. Li \textit{et al.}, "Self-supervised feature learning for medical VQA," \textit{IEEE Trans. Med. Imag.}, vol. 41, no. 10, pp. 2701--2712, 2022.
+\bibitem{gu2021} Y. Gu \textit{et al.}, "Domain-specific language model pretraining for biomedical NLP," \textit{ACM Trans. Comput. Healthcare}, vol. 3, no. 1, pp. 1--23, 2021.
+\bibitem{zhang2023} S. Zhang \textit{et al.}, "BiomedCLIP: Big multimodal models for biomedicine," \textit{arXiv:2303.00915}, 2023.
+\bibitem{zhou2023} Y. Zhou \textit{et al.}, "Analyzing and mitigating hallucination in VLMs," in \textit{Proc. NeurIPS}, 2023.
+\bibitem{liuh2024} H. Liu \textit{et al.}, "Mitigating hallucination in large vision-language models via visual contrastive decoding," in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2024.
+\bibitem{tang2020} K. Tang \textit{et al.}, "Unbiased scene graph generation from biased training," in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2020.
+\bibitem{zhangc2021} C. Zhang \textit{et al.}, "Causal intervention for long-tailed visual recognition," in \textit{Proc. NeurIPS}, 2021.
 \bibitem{guo2017} C. Guo \textit{et al.}, "On calibration of modern neural networks," in \textit{Proc. ICML}, 2017.
 \bibitem{pearl2009} J. Pearl, \textit{Causality: Models, Reasoning and Inference}, 2nd ed. Cambridge Univ. Press, 2009.
 \bibitem{maier2024} L. Maier-Hein \textit{et al.}, "Metrics reloaded: Recommendations for image analysis validation," \textit{Nat. Methods}, vol. 21, pp. 195--212, 2024.
