@@ -89,8 +89,8 @@ def train_vqa(dataset_name="slake", data_dir="data/", config_path="configs/basel
             head_params.append(param)
             
     optimizer = optim.AdamW([
-        {"params": backbone_params, "lr": 2e-5},
-        {"params": head_params, "lr": 5e-4}
+        {"params": backbone_params, "lr": lr * 0.05},
+        {"params": head_params, "lr": lr}
     ], weight_decay=1e-4)
     
     criterion = nn.CrossEntropyLoss()
