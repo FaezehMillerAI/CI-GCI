@@ -57,7 +57,14 @@ Causal inference and Pearl's $do$-calculus \cite{pearl2009} have been applied to
 \section{Methodological Innovation}
 \label{sec:methodology}
 
-\subsection{Structural Causal Graph and Confounder Elimination}
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{fig_framework.pdf}
+\caption{Overview of the proposed Causal-Interventional Grounding and Counterfactual Inpainting (CI-GCI) framework. (1) Question $Q$ and image $I$ are encoded to locate spatial ROI mask $\mathbf{M}$ via Gaze-Guided ROI Locator (GGRL) cross-attention. (2) The Observational Path computes observational logits $\mathbf{L}_{\text{orig}}$. (3) The Interventional Path applies physical $do$-calculus $do(I \setminus \text{ROI})$ using Generative Counterfactual Inpainting (CFI) to erase lesion evidence into healthy organ background, producing counterfactual logits $\mathbf{L}_{\text{cf}}$. (4) The Causal Contrastive Decoder (CCD) computes calibrated interventional logits $\mathbf{L}_{\text{calib}} = \mathbf{L}_{\text{orig}} + \gamma(Q) \odot \text{ITE}$. (5) The Consistency Verification Head and Selective Abstention Triage Gate route high-confidence predictions to automated output $\hat{A}$ and uncertain cases to human radiologists.}
+\label{fig:framework}
+\end{figure*}
+
+\subsection{Structural Causal Model (SCM) Formulation}
 The foundational framework of CI-GCI rests upon a Structural Causal Model (SCM) represented as a Directed Acyclic Graph (DAG) that explicitly formalizes the generative relationships among the system variables. We define the causal system over five primary domain variables, comprising the input medical radiograph $I$, the natural language clinical question $Q$, the latent confounder $C$ reflecting dataset co-occurrence distributions and reporting biases, the intermediate anatomical feature representation $V$, and the target diagnostic answer $A$. In conventional observational visual question answering systems, models optimize the conditional likelihood $P(A \mid I, Q)$, which inevitably admits information flow along the unblocked backdoor path $I \leftarrow C \rightarrow A$. Consequently, the predictive decoder learns to generate answers by exploiting spurious correlations between language keywords and clinical labels without verifying whether anatomical evidence exists within the input scan.
 
 To eliminate this backdoor confounding, CI-GCI invokes Pearl's $do$-calculus to sever the incoming causal edge $C \rightarrow I$, establishing an interventional distribution $P(A \mid do(I=i), Q)$. By forcing the physical intervention $do(I=i)$, the model holds the visual environment fixed while removing confounding dependencies. Mathematically, the interventional likelihood is expressed by marginalizing over the latent confounder distribution:
