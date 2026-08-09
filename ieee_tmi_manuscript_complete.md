@@ -238,7 +238,7 @@ Following the SIER principles, we presented **CI-GCI**, a novel causal framework
 
 ## References
 
-[1] D. L. Rubin, "Artificial intelligence in imaging: Present and future," *IEEE Trans. Med. Imag.*, vol. 38, no. 1, pp. 4–16, 2019.  
+[1] D. L. Rubin, "Artificial intelligence in imaging: The radiologist's role," *J. Amer. Coll. Radiol. (JACR)*, vol. 16, no. 9, pp. 1309–1317, Sep. 2019, doi: 10.1016/j.jacr.2019.05.035.  
 [2] X. He, Y. Zhang, L. Mou, E. Xing, and L. Xie, "PathVQA: 30000+ question-answer pairs for pathological images," *arXiv preprint arXiv:2003.10286*, 2020.  
 [3] Z. Chen, Y. Du, J. Hu, et al., "Multi-modal medical VQA with spatial-attentive fusion," *IEEE Trans. Med. Imag.*, vol. 40, no. 5, pp. 1420–1431, 2021.  
 [4] A. Gale, et al., "Can artificial intelligence read chest X-rays as well as radiologists?" *Radiology*, vol. 294, no. 2, pp. 432–441, 2020.  
