@@ -12,6 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.config import load_config
 from utils.slake_loader import SlakeCausalDataset, causal_collate_fn
 from utils.vqa_rad_loader import VQARadCausalDataset
+from utils.vocab import build_answer_vocab, save_vocab, normalize_answer
 from models.cqc_net import CQCNet
 
 def train_vqa(dataset_name="slake", data_dir="data/", config_path="configs/baseline_vqa.yaml", epochs=3, batch_size=16, lr=1e-4, device="cpu"):
@@ -20,7 +21,6 @@ def train_vqa(dataset_name="slake", data_dir="data/", config_path="configs/basel
     # Load configuration
     config = load_config(config_path)
     config["model"]["num_aux_questions"] = 0 # Disable auxiliary tasks for VQA baseline
-    config["model"]["num_classes"] = 2       # Binary Yes/No VQA
     
     # Dataset & Loader resolution
     if dataset_name == "slake":
@@ -35,6 +35,7 @@ def train_vqa(dataset_name="slake", data_dir="data/", config_path="configs/basel
         val_dataset = SlakeCausalDataset(val_json, img_dir, mask_mapping_path)
         val_dataset.data = [item for item in val_dataset.data if item.get("answer_type") == "CLOSED"]
         collate = causal_collate_fn
+        raw_train_items = train_dataset.data
         
     elif dataset_name == "vqa_rad":
         json_path = os.path.join(data_dir, "VQA-RAD", "VQA_RAD Dataset Public.json")
@@ -52,8 +53,13 @@ def train_vqa(dataset_name="slake", data_dir="data/", config_path="configs/basel
         train_dataset = torch.utils.data.Subset(full_dataset, indices[:split_idx])
         val_dataset = torch.utils.data.Subset(full_dataset, indices[split_idx:])
         collate = causal_collate_fn
+        raw_train_items = [full_dataset.data[i] for i in indices[:split_idx]]
         
-    print(f"Loaded {len(train_dataset)} train and {len(val_dataset)} val closed-ended VQA samples.")
+    # Build vocabulary for exact candidate classification
+    ans2idx, idx2ans = build_answer_vocab(raw_train_items)
+    save_vocab(ans2idx, idx2ans, f"models/{dataset_name}_vocab.json")
+    config["model"]["num_classes"] = max(2, len(ans2idx))
+    print(f"Loaded {len(train_dataset)} train and {len(val_dataset)} val samples with {len(ans2idx)} answer classes.")
     
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0, collate_fn=collate)
@@ -64,29 +70,32 @@ def train_vqa(dataset_name="slake", data_dir="data/", config_path="configs/basel
     # We load pre-trained weights if available to speed up convergence
     baseline_chk = "outputs/checkpoints/baseline/best_baseline_model.pt"
     if os.path.exists(baseline_chk):
-        print(f"Initializing with pre-trained visual/text encoders from {baseline_chk}")
-        model.load_state_dict(torch.load(baseline_chk, map_location=device), strict=False)
+        try:
+            print(f"Initializing with pre-trained visual/text encoders from {baseline_chk}")
+            model.load_state_dict(torch.load(baseline_chk, map_location=device), strict=False)
+        except Exception as e:
+            print(f"Skipping legacy baseline checkpoint due to dimension mismatch: {e}")
         
-    # Freeze pre-trained visual & text backbones to prevent catastrophic forgetting
-    # and preserve BiomedCLIP's medical feature representations.
-    if hasattr(model.visual_encoder, "backbone"):
-        for param in model.visual_encoder.backbone.parameters():
-            param.requires_grad = False
-        print("-> Frozen pre-trained Visual Encoder backbone.")
-    if hasattr(model.text_encoder, "hf_model") and model.text_encoder.hf_model is not None:
-        for param in model.text_encoder.hf_model.parameters():
-            param.requires_grad = False
-        print("-> Frozen pre-trained Text Encoder backbone.")
-        
+    # Set up dual-rate optimization: low LR for pre-trained backbones, higher LR for fusion & classification heads
     model.train()
     
-    # Only optimize parameters that require gradients
-    trainable_params = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = optim.AdamW(trainable_params, lr=lr)
+    backbone_params = []
+    head_params = []
+    
+    for name, param in model.named_parameters():
+        if "visual_encoder" in name or "text_encoder" in name:
+            backbone_params.append(param)
+        else:
+            head_params.append(param)
+            
+    optimizer = optim.AdamW([
+        {"params": backbone_params, "lr": 2e-5},
+        {"params": head_params, "lr": 5e-4}
+    ], weight_decay=1e-4)
+    
     criterion = nn.CrossEntropyLoss()
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     
-    ans_map = {"no": 0, "yes": 1}
     best_val_acc = 0.0
     
     for epoch in range(epochs):
@@ -101,8 +110,8 @@ def train_vqa(dataset_name="slake", data_dir="data/", config_path="configs/basel
             questions = batch["question"]
             answers = batch["answer"]
             
-            # Convert labels to tensor
-            labels = torch.tensor([ans_map.get(ans.strip().lower(), 0) for ans in answers], dtype=torch.long, device=device)
+            # Convert labels to tensor using dynamic vocabulary
+            labels = torch.tensor([ans2idx.get(normalize_answer(ans), 0) for ans in answers], dtype=torch.long, device=device)
             
             optimizer.zero_grad()
             outputs = model(images, questions, device)
@@ -132,7 +141,7 @@ def train_vqa(dataset_name="slake", data_dir="data/", config_path="configs/basel
                 questions = batch["question"]
                 answers = batch["answer"]
                 
-                labels = torch.tensor([ans_map.get(ans.strip().lower(), 0) for ans in answers], dtype=torch.long, device=device)
+                labels = torch.tensor([ans2idx.get(normalize_answer(ans), 0) for ans in answers], dtype=torch.long, device=device)
                 outputs = model(images, questions, device)
                 logits = outputs["main_class_logits"]
                 

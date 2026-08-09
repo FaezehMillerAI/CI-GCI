@@ -20,20 +20,19 @@ from models.causal_decoder import CausalContrastiveDecoder
 from evaluation.eval_calibration_grounding import compute_ece
 from evaluation.eval_vqa_core import compute_vqa_core_metrics
 
+from utils.vocab import load_vocab, build_answer_vocab, normalize_answer
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, default="slake", choices=["slake", "vqa_rad", "ms_cxr", "heal"])
     parser.add_argument("--data_dir", type=str, default="data/")
-    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--device", type=str, default="mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
     args = parser.parse_args()
     
     device = torch.device(args.device)
-    print("==================================================")
-    print(f"   CI-GCI COMPARATIVE BENCHMARK: {args.dataset.upper()}   ")
-    print("==================================================")
-    print(f"Using device: {device}")
+    print(f"Running Comparative Benchmarking on '{args.dataset.upper()}' using device: {device}")
     
-    # 1. Dataset selection
+    # 1. Load Dataset
     if args.dataset == "slake":
         json_path = os.path.join(args.data_dir, "slake", "test.json")
         img_dir = os.path.join(args.data_dir, "slake", "imgs")
@@ -49,7 +48,7 @@ def main():
         collate = causal_collate_fn
     elif args.dataset == "ms_cxr":
         json_path = os.path.join(args.data_dir, "ms-cxr", "MS_CXR_Local_Alignment_v1.1.0.json")
-        img_dir = os.path.join(args.data_dir, "ms-cxr") # Images located relative to this folder
+        img_dir = os.path.join(args.data_dir, "ms-cxr")
         dataset = MSCXRCausalDataset(json_path, img_dir)
         collate = causal_collate_fn
     elif args.dataset == "heal":
@@ -59,15 +58,26 @@ def main():
     print(f"Loaded {len(dataset)} evaluation samples.")
     dataloader = DataLoader(dataset, batch_size=8, shuffle=False, collate_fn=collate)
     
+    # Load answer vocabulary
+    vocab_path = f"models/{args.dataset}_vocab.json"
+    if not os.path.exists(vocab_path) and args.dataset in ["ms_cxr", "heal"]:
+        vocab_path = "models/slake_vocab.json"
+        
+    if os.path.exists(vocab_path):
+        ans2idx, idx2ans = load_vocab(vocab_path)
+    else:
+        raw_items = dataset.data if hasattr(dataset, "data") else []
+        ans2idx, idx2ans = build_answer_vocab(raw_items)
+        
     # 2. Load VQA Model
     config = load_config("configs/baseline_vqa.yaml")
     config["model"]["num_aux_questions"] = 0
+    config["model"]["num_classes"] = max(2, len(ans2idx))
     vqa_model = CQCNet(config).to(device)
     
     # Attempt to load dataset-specific fine-tuned checkpoint
     chk_path = f"models/{args.dataset}_vqa_model.pth"
     if not os.path.exists(chk_path) and args.dataset in ["ms_cxr", "heal"]:
-        # Fallback to slake model for cross-dataset evaluation
         chk_path = "models/slake_vqa_model.pth"
         
     baseline_chk = "outputs/checkpoints/baseline/best_baseline_model.pt"
@@ -88,16 +98,14 @@ def main():
     causal_decoder = CausalContrastiveDecoder(gamma=1.5).to(device)
     
     # Storage arrays
-    ground_truths = []
+    ground_truths_int = []
+    original_gts_str = []
     baseline_confidences = []
     baseline_preds = []
     attn_confidences = []
     attn_preds = []
     causal_confidences = []
     causal_preds = []
-    
-    ans_map = {"no": 0, "yes": 1}
-    inv_ans_map = {0: "no", 1: "yes"}
     
     with torch.no_grad():
         for batch in dataloader:
@@ -107,8 +115,11 @@ def main():
             answers = batch["answer"]
             
             # Ground-truths
-            batch_gts = [ans_map.get(ans.strip().lower(), 0) for ans in answers]
-            ground_truths.extend(batch_gts)
+            batch_gts_norm = [normalize_answer(ans) for ans in answers]
+            batch_gts_idx = [ans2idx.get(ans_norm, 0) for ans_norm in batch_gts_norm]
+            
+            original_gts_str.extend(batch_gts_norm)
+            ground_truths_int.extend(batch_gts_idx)
             
             # Predict original
             original_outputs = vqa_model(images, questions, device)
@@ -127,13 +138,13 @@ def main():
             
             # Save original baseline predictions
             orig_pred_classes = torch.argmax(orig_probs, dim=-1).cpu().numpy()
-            baseline_preds.extend([inv_ans_map[p] for p in orig_pred_classes])
-            baseline_confidences.extend(orig_probs[:, 1].cpu().numpy())
+            baseline_preds.extend([idx2ans.get(p, "unknown") for p in orig_pred_classes])
+            baseline_confidences.extend(orig_probs.max(dim=-1).values.cpu().numpy())
             
             # Save ours (CI-GCI) predictions
             cal_pred_classes = torch.argmax(calibrated_probs, dim=-1).cpu().numpy()
-            causal_preds.extend([inv_ans_map[p] for p in cal_pred_classes])
-            causal_confidences.extend(calibrated_probs[:, 1].cpu().numpy())
+            causal_preds.extend([idx2ans.get(p, "unknown") for p in cal_pred_classes])
+            causal_confidences.extend(calibrated_probs.max(dim=-1).values.cpu().numpy())
             
             # Simulate Attention-Saliency Baseline:
             for idx in range(len(questions)):
@@ -150,14 +161,12 @@ def main():
                     attn_prob = attn_prob * 0.75
                     attn_prob = attn_prob / np.sum(attn_prob)
                     
-                attn_preds.append(inv_ans_map[np.argmax(attn_prob)])
-                attn_confidences.append(attn_prob[1])
+                attn_preds.append(idx2ans.get(np.argmax(attn_prob), "unknown"))
+                attn_confidences.append(np.max(attn_prob))
                 
     # Calculate Metrics
-    original_gts_str = [inv_ans_map[gt] for gt in ground_truths]
-    
     base_vqa = compute_vqa_core_metrics(baseline_preds, original_gts_str)
-    base_ece, _ = compute_ece(np.array(baseline_confidences), np.array(ground_truths))
+    base_ece, _ = compute_ece(np.array(baseline_confidences), np.array(ground_truths_int))
     
     attn_vqa = compute_vqa_core_metrics(attn_preds, original_gts_str)
     attn_ece, _ = compute_ece(np.array(attn_confidences), np.array(ground_truths))

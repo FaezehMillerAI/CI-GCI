@@ -13,18 +13,20 @@ class AnswerGenerator(nn.Module):
         # Cross attention mechanism to fuse visual patch tokens with question features
         self.cross_attention = nn.MultiheadAttention(embed_dim=text_dim, num_heads=8, batch_first=True)
         
-        # Fusion projection
+        # Fusion projection: Question (text_dim) + Global Image (visual_dim) + Local ROI (text_dim)
         self.fuse_proj = nn.Sequential(
-            nn.Linear(visual_dim + text_dim, decoder_dim),
-            nn.ReLU(),
-            nn.Linear(decoder_dim, decoder_dim)
+            nn.Linear(text_dim + visual_dim + text_dim, decoder_dim),
+            nn.LayerNorm(decoder_dim),
+            nn.GELU(),
+            nn.Dropout(0.1),
+            nn.Linear(decoder_dim, decoder_dim),
+            nn.LayerNorm(decoder_dim)
         )
         
-        # Classification head for yes/no answers (common in Med-VQA)
+        # Classification head for yes/no & multi-class answers
         self.class_head = nn.Linear(decoder_dim, num_classes)
         
         # Decoder language model head mapping to vocabulary space for open-ended answers
-        # Using a character or simple word vocabulary for mock generative decoding
         self.vocab_size = 2000
         self.decoder_head = nn.Linear(decoder_dim, self.vocab_size)
         
@@ -56,8 +58,8 @@ class AnswerGenerator(nn.Module):
         attn_out, _ = self.cross_attention(query=q_query, key=visual_local_rep, value=visual_local_rep)
         attn_out = attn_out.squeeze(1) # [B_new, D]
         
-        # Concatenate global visual features and cross-attended question features
-        fused = torch.cat([visual_global_rep, attn_out], dim=-1) # [B_new, visual_dim + text_dim]
+        # Concatenate question features, global visual features, and cross-attended local ROI features
+        fused = torch.cat([q_feat_flat, visual_global_rep, attn_out], dim=-1) # [B_new, text_dim + visual_dim + text_dim]
         fused_repr = self.fuse_proj(fused) # [B_new, decoder_dim]
         
         # Class logits
