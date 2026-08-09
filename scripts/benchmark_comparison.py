@@ -169,10 +169,10 @@ def main():
     base_ece, _ = compute_ece(np.array(baseline_confidences), np.array(ground_truths_int))
     
     attn_vqa = compute_vqa_core_metrics(attn_preds, original_gts_str)
-    attn_ece, _ = compute_ece(np.array(attn_confidences), np.array(ground_truths))
+    attn_ece, _ = compute_ece(np.array(attn_confidences), np.array(ground_truths_int))
     
     ours_vqa = compute_vqa_core_metrics(causal_preds, original_gts_str)
-    ours_ece, _ = compute_ece(np.array(causal_confidences), np.array(ground_truths))
+    ours_ece, _ = compute_ece(np.array(causal_confidences), np.array(ground_truths_int))
     
     print("\n==================================================")
     print(f"      COMPARISON BENCHMARK TABLE: {args.dataset.upper()}      ")
