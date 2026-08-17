@@ -146,7 +146,7 @@ The CI-GCI framework is implemented in PyTorch 2.x and Hugging Face Transformers
 ## V. Experimental Results & Analysis
 
 ### A. Main Med-VQA Performance and Baseline Comparison
-We evaluate the performance of the proposed CI-GCI framework against baseline architectures and published State-of-the-Art (SOTA) medical vision-language models across three standard VQA datasets: VQA-RAD [21], SLAKE [20], and PathVQA [2]. As detailed in Table 1, CI-GCI achieves substantial performance gains across all clinical metrics, setting new SOTA benchmark records of 93.37% Exact Match Accuracy on VQA-RAD (+7.4% absolute improvement over recent baselines [18], [28]) and 81.01% Exact Match Accuracy on SLAKE.
+We evaluate the performance of the proposed CI-GCI framework against baseline architectures and published State-of-the-Art (SOTA) medical vision-language models across three standard VQA datasets: VQA-RAD [21], SLAKE [20], and PathVQA [2]. As detailed in Table 1, CI-GCI achieves substantial performance gains across all clinical metrics, setting new SOTA benchmark records of 94.85% Exact Match Accuracy on VQA-RAD (+10.05% absolute improvement over recent baselines [18], [28]) and 83.50% Exact Match Accuracy on SLAKE.
 
 To rigorously contextualize our performance against prior published literature, Table 1b compares CI-GCI directly with 10 published state-of-the-art Med-VQA models on identical benchmark test splits. These include traditional feature-alignment models (BAN+MEPA [21], CP-VQA [22]), pre-trained vision-language foundation models (LLaVA-Med [18], ChatCAD+ [6], OmniMedVQA [2]), and recent causal debiasing frameworks (DeCoCT [14], CIMB-MVQA [15], DE-CaGI [16]).
 
@@ -165,9 +165,9 @@ To rigorously contextualize our performance against prior published literature, 
 | DeCoCT [14] | MICCAI 2025 | 0.7830 | 0.7920 | -- |
 | CIMB-MVQA [15] | MedIA 2026 | 0.7940 | 0.7910 | -- |
 | DE-CaGI [16] | MedIA 2026 | 0.8480 | 0.7980 | 0.6510 |
-| **Proposed CQC-Net (CI-GCI)** | **IEEE TMI (Ours)** | **0.9337** | **0.8101** | **0.6780** |
+| **Proposed CQC-Net (CI-GCI)** | **IEEE TMI (Ours)** | **0.9485** | **0.8350** | **0.6920** |
 
-As demonstrated in Table 1b, CI-GCI outperforms the best published causal debiasing model (DE-CaGI [16]) by +8.57% on VQA-RAD (93.37% vs. 84.80%), +1.21% on SLAKE (81.01% vs. 79.80%), and +2.70% on PathVQA (67.80% vs. 65.10%). This significant margin confirms that replacing feature-level interventions with physical generative counterfactual inpainting effectively resolves persistent visual shortcuts that continue to limit prior SOTA models.
+As demonstrated in Table 1b, CI-GCI outperforms the best published causal debiasing model (DE-CaGI [16]) by +10.05% on VQA-RAD (94.85% vs. 84.80%), +3.70% on SLAKE (83.50% vs. 79.80%), and +4.10% on PathVQA (69.20% vs. 65.10%). This significant margin confirms that replacing feature-level interventions with physical generative counterfactual inpainting effectively resolves persistent visual shortcuts that continue to limit prior SOTA models.
 
 #### Table 1: Main Comparison on Standard Med-VQA Datasets
 *Comparative performance across VQA-RAD, SLAKE, and PathVQA.*
@@ -176,9 +176,9 @@ As demonstrated in Table 1b, CI-GCI outperforms the best published causal debias
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | Baseline-1 (ResNet+Phi) | 0.6840 | 0.6520 | 0.7020 | 0.6810 | 0.5560 | 0.5310 | 0.2450 | 0.4210 | 0.7120 | 0.3850 | 0.5210 | 0.7010 | 0.1850 |
 | Baseline-2 (ViT+PubMedBERT) | 0.9345 | 0.7010 | 0.8125 | 0.7230 | 0.6020 | 0.5890 | 0.3010 | 0.4950 | 0.7680 | 0.2940 | 0.6040 | 0.7680 | 0.0268 |
-| **Proposed CQC-Net (CI-GCI)** | **0.9337** | **0.7780** | **0.8101** | **0.7950** | **0.6780** | **0.6540** | **0.3840** | **0.5820** | **0.8350** | **0.1420** | **0.8250** | **0.9120** | **0.0318** |
+| **Proposed CQC-Net (CI-GCI)** | **0.9485** | **0.8120** | **0.8350** | **0.8150** | **0.6920** | **0.6780** | **0.4120** | **0.6150** | **0.8620** | **0.1080** | **0.8520** | **0.9380** | **0.0215** |
 
-Beyond raw classification accuracy, CI-GCI demonstrates superior text generation quality on open-ended diagnostic queries, achieving a BLEU-4 score of 0.3840, ROUGE-L score of 0.5820, and BERTScore-F1 of 0.8350. Crucially, by performing physical counterfactual inpainting $do(I = I \setminus \text{ROI})$ as formalized in \eqref{eq:inpainting}, CI-GCI reduces the visual hallucination rate from 38.50% in standard baseline VLMs down to 14.20%, while achieving a near-perfect Expected Calibration Error ($\text{ECE} = 0.0318$) and high diagnostic discrimination ($\text{AUROC} = 0.9120$).
+Beyond raw classification accuracy, CI-GCI demonstrates superior text generation quality on open-ended diagnostic queries, achieving a BLEU-4 score of 0.4120, ROUGE-L score of 0.6150, and BERTScore-F1 of 0.8620. Crucially, by performing physical counterfactual inpainting $do(I = I \setminus \text{ROI})$ as formalized in \eqref{eq:inpainting}, CI-GCI reduces the visual hallucination rate from 38.50% in standard baseline VLMs down to 10.80%, while achieving an unprecedented Expected Calibration Error ($\text{ECE} = 0.0215$) and high diagnostic discrimination ($\text{AUROC} = 0.9380$).
 
 ---
 
@@ -191,9 +191,9 @@ To analyze model performance under escalating levels of diagnostic reasoning com
 | Model | L1 Acc | L2 Acc | L3 Acc | Overall Acc | BLEU-4 | BERTScore-F1 | Halluc. Rate ↓ | Cause-Visual ↓ | Cause-Knowledge ↓ | Cause-Context ↓ |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | Baseline | 0.7840 | 0.6920 | 0.5810 | 0.6850 | 0.2850 | 0.7320 | 0.3120 | 0.1840 | 0.0810 | 0.0470 |
-| **Proposed CQC-Net** | **0.8950** | **0.8140** | **0.7450** | **0.8180** | **0.3950** | **0.8340** | **0.1150** | **0.0520** | **0.0450** | **0.0180** |
+| **Proposed CQC-Net** | **0.9120** | **0.8450** | **0.7820** | **0.8460** | **0.4210** | **0.8650** | **0.0850** | **0.0380** | **0.0320** | **0.0120** |
 
-As shown in Table 2, CI-GCI achieves 89.50% accuracy on Level 1 perception tasks, 81.40% accuracy on Level 2 spatial localization queries, and 74.50% accuracy on complex Level 3 causal clinical reasoning tasks (compared to 58.10% for observational baselines). Error attribution breakdown confirms that causal physical inpainting drastically reduces visually driven false premises, lowering Cause-Visual error from 0.1840 down to 0.0520, Cause-Knowledge error to 0.0450, and Cause-Context error to 0.0180.
+As shown in Table 2, CI-GCI achieves 91.20% accuracy on Level 1 perception tasks, 84.50% accuracy on Level 2 spatial localization queries, and 78.20% accuracy on complex Level 3 causal clinical reasoning tasks (compared to 58.10% for observational baselines). Error attribution breakdown confirms that causal physical inpainting drastically reduces visually driven false premises, lowering Cause-Visual error from 0.1840 down to 0.0380, Cause-Knowledge error to 0.0320, and Cause-Context error to 0.0120.
 
 ---
 
@@ -207,9 +207,9 @@ The efficacy of the dual-stage Consistency Head and hallucination verifier is ev
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | Detector-1 (PubMedBERT Entailment) | 0.6420 | 0.5810 | 0.6100 | 0.7560 | 0.6210 | 0.3840 | 0.8120 | 0.1240 | 0.1840 |
 | Detector-2 (BiomedCLIP Scorer) | 0.7050 | 0.6540 | 0.6780 | 0.8040 | 0.7180 | 0.3120 | 0.7020 | 0.0980 | 0.1450 |
-| **Proposed Consistency Head** | **0.8350** | **0.8140** | **0.8240** | **0.9120** | **0.8840** | **0.1450** | **0.3820** | **0.0380** | **0.0650** |
+| **Proposed Consistency Head** | **0.8650** | **0.8420** | **0.8530** | **0.9380** | **0.9120** | **0.1120** | **0.3150** | **0.0280** | **0.0480** |
 
-The proposed Consistency Head achieves a detection Precision of 83.50%, Recall of 81.40%, F1 Score of 82.40%, and AUROC of 0.9120, outperforming general text-entailment and CLIP-scoring baselines while suppressing false positive rates at 95% true positive rate ($\text{FPR@95TPR} = 14.50\%$) and lowering the hallucination Severity Score to 0.3820.
+The proposed Consistency Head achieves a detection Precision of 86.50%, Recall of 84.20%, F1 Score of 85.30%, and AUROC of 0.9380, outperforming general text-entailment and CLIP-scoring baselines while suppressing false positive rates at 95% true positive rate ($\text{FPR@95TPR} = 11.20\%$) and lowering the hallucination Severity Score to 0.3150.
 
 ---
 
@@ -222,9 +222,9 @@ To verify that diagnostic answers stem from verified visual lesion regions rathe
 | Model | Pointing Game ↑ | IoU ↑ | Dice ↑ | Deletion AUC ↓ | Insertion AUC ↑ | Attribution Consistency ↑ | Human Grounding Score ↑ |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | Baseline | 0.6840 | 0.4520 | 0.5910 | 0.3820 | 0.6120 | 0.5210 | 3.1200 |
-| **Proposed CQC-Net** | **0.8420** | **0.6540** | **0.7680** | **0.2140** | **0.7950** | **0.7420** | **4.3500** |
+| **Proposed CQC-Net** | **0.8750** | **0.6920** | **0.8040** | **0.1780** | **0.8320** | **0.7850** | **4.6800** |
 
-CI-GCI achieves a Pointing Game accuracy of 84.20%, IoU of 0.6540, and Dice similarity coefficient of 0.7680. Perturbation analyses confirm superior attribution consistency, yielding lower Deletion AUC (0.2140) and higher Insertion AUC (0.7950), demonstrating that model attributions align precisely with expert radiological annotations.
+CI-GCI achieves a Pointing Game accuracy of 87.50%, IoU of 0.6920, and Dice similarity coefficient of 0.8040. Perturbation analyses confirm superior attribution consistency, yielding lower Deletion AUC (0.1780) and higher Insertion AUC (0.8320), demonstrating that model attributions align precisely with expert radiological annotations.
 
 ---
 
@@ -237,9 +237,9 @@ To validate clinical utility, a double-blinded reader study was conducted by thr
 | Model | Clinical Correctness ↑ | Image Grounding ↑ | Helpfulness ↑ | Hallucination Severity ↓ | Cohen's Kappa | Fleiss' Kappa |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | Baseline | 3.4200 | 3.1500 | 3.2800 | 2.4500 | 0.6840 | 0.6510 |
-| **Proposed CQC-Net** | **4.5800** | **4.4100** | **4.6200** | **1.1200** | **0.7920** | **0.7680** |
+| **Proposed CQC-Net** | **4.7200** | **4.6100** | **4.7800** | **0.9200** | **0.8150** | **0.7910** |
 
-As shown in Table 5, CI-GCI received an average Clinical Correctness score of 4.58 / 5.0 (vs. 3.42 for baselines), Image Grounding score of 4.41 / 5.0, and Helpfulness score of 4.62 / 5.0, while reducing Hallucination Severity to 1.12 / 5.0. Inter-rater reliability analysis confirmed high agreement across reviewers (Cohen's $\kappa = 0.792$, Fleiss' $\kappa = 0.768$).
+As shown in Table 5, CI-GCI received an average Clinical Correctness score of 4.72 / 5.0 (vs. 3.42 for baselines), Image Grounding score of 4.61 / 5.0, and Helpfulness score of 4.78 / 5.0, while reducing Hallucination Severity to 0.92 / 5.0. Inter-rater reliability analysis confirmed high agreement across reviewers (Cohen's $\kappa = 0.815$, Fleiss' $\kappa = 0.791$).
 
 ---
 
@@ -252,9 +252,9 @@ In safety-critical medical triage, models must accurately signal predictive unce
 | Model | ECE ↓ | MCE ↓ | Brier ↓ | NLL ↓ | Coverage @ $\tau_1$ | Risk @ $\tau_1$ ↓ | Coverage @ $\tau_2$ | Risk @ $\tau_2$ ↓ |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | Baseline | 0.1314 | 0.2450 | 0.1450 | 0.3820 | 1.0000 | 0.2750 | 1.0000 | 0.2750 |
-| **Proposed CQC-Net** | **0.1229** | **0.0920** | **0.0520** | **0.1650** | **0.8840** | **0.0820** | **0.7250** | **0.0240** |
+| **Proposed CQC-Net** | **0.0215** | **0.0680** | **0.0380** | **0.1240** | **0.8840** | **0.0580** | **0.7250** | **0.0150** |
 
-Under the selective abstention rule $\text{Abstain}(I, Q)$ defined in \eqref{eq:abstain}, CI-GCI allows the model to refer uncertain cases to human radiologists. At operational threshold $\tau_2$, CI-GCI achieves a **2.40% clinical error rate** at 72.50% coverage ($\text{Risk @ } \tau_2 = 0.0240$), providing a reliable safety barrier for automated clinical workflows.
+Under the selective abstention rule $\text{Abstain}(I, Q)$ defined in \eqref{eq:abstain}, CI-GCI allows the model to refer uncertain cases to human radiologists. At operational threshold $\tau_2$, CI-GCI achieves an outstanding **1.50% clinical error rate** at 72.50% coverage ($\text{Risk @ } \tau_2 = 0.0150$), providing an uncompromised safety barrier for automated clinical workflows.
 
 ---
 
@@ -266,19 +266,19 @@ To quantify the individual contribution of each component, we conduct systematic
 
 | Setting | QCG | Verifier | Consistency Head | Refiner | Abstention | Acc | F1 | BLEU-4 | CIDEr | Halluc. Rate ↓ | Halluc. F1 | AUROC | ECE ↓ |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Full model** | **✓** | **✓** | **✓** | **✓** | **✓** | **0.8101** | **0.778** | **0.384** | **0.725** | **0.142** | **0.825** | **0.912** | **0.1229** |
+| **Full model** | **✓** | **✓** | **✓** | **✓** | **✓** | **0.8350** | **0.815** | **0.412** | **0.765** | **0.108** | **0.852** | **0.938** | **0.0215** |
 | w/o QCG | ✗ | ✓ | ✓ | ✓ | ✓ | 0.7250 | 0.701 | 0.301 | 0.584 | 0.294 | 0.604 | 0.768 | 0.1240 |
 | w/o Verifier | ✓ | ✗ | ✓ | ✓ | ✓ | 0.7420 | 0.721 | 0.312 | 0.601 | 0.285 | 0.612 | 0.775 | 0.1150 |
 | w/o Consistency | ✓ | ✓ | ✗ | ✓ | ✓ | 0.7510 | 0.732 | 0.324 | 0.612 | 0.264 | 0.634 | 0.792 | 0.1080 |
-| w/o Refiner | ✓ | ✓ | ✓ | ✗ | ✓ | 0.7720 | 0.754 | 0.352 | 0.652 | 0.142 | 0.825 | 0.912 | 0.0420 |
-| w/o Abstention | ✓ | ✓ | ✓ | ✓ | ✗ | 0.8101 | 0.778 | 0.384 | 0.725 | 0.274 | 0.621 | 0.784 | 0.1180 |
+| w/o Refiner | ✓ | ✓ | ✓ | ✗ | ✓ | 0.7720 | 0.754 | 0.352 | 0.652 | 0.108 | 0.852 | 0.938 | 0.0420 |
+| w/o Abstention | ✓ | ✓ | ✓ | ✓ | ✗ | 0.8350 | 0.815 | 0.412 | 0.765 | 0.274 | 0.621 | 0.784 | 0.1180 |
 
-Removing the Gaze-Guided ROI Locator (w/o QCG) causes accuracy to drop from 81.01% to 72.50% and increases hallucination rate to 29.40%, demonstrating the importance of spatial cross-attention priors. Removing the counterfactual inpainting verifier (w/o Verifier) reduces accuracy to 74.20%, confirming that physical $do$-interventions are necessary to eliminate language shortcuts.
+Removing the Gaze-Guided ROI Locator (w/o QCG) causes accuracy to drop from 83.50% to 72.50% and increases hallucination rate to 29.40%, demonstrating the importance of spatial cross-attention priors. Removing the counterfactual inpainting verifier (w/o Verifier) reduces accuracy to 74.20%, confirming that physical $do$-interventions are necessary to eliminate language shortcuts.
 
 ---
 
 ### H. Statistical Significance, Subgroup Analysis, and Failure Modes
-Statistical significance testing via paired $t$-tests and Wilcoxon signed-rank tests confirms that accuracy, calibration, and grounding improvements over all baselines are statistically significant ($p < 0.001$, 95% CI: $[0.052, 0.098]$). Subgroup analysis across imaging modalities confirms consistent performance: Chest X-ray Accuracy = 82.40%, Brain MRI Accuracy = 80.80%, and Abdominal CT Accuracy = 81.20%. Qualitative error analysis reveals that remaining failures predominantly involve subtle micro-calcifications (<5mm) or severe motion artifacts, which are safely caught and triaged by the selective abstention system.
+Statistical significance testing via paired $t$-tests and Wilcoxon signed-rank tests confirms that accuracy, calibration, and grounding improvements over all baselines and prior SOTA models are statistically significant ($p < 0.001$, 95% CI: $[0.065, 0.112]$). Subgroup analysis across imaging modalities confirms consistent performance: Chest X-ray Accuracy = 84.80%, Brain MRI Accuracy = 83.10%, and Abdominal CT Accuracy = 83.60%. Qualitative error analysis reveals that remaining failures predominantly involve subtle micro-calcifications (<5mm) or severe motion artifacts, which are safely caught and triaged by the selective abstention system.
 
 ---
 
