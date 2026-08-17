@@ -24,6 +24,14 @@ def run_pipeline_check():
     # Step 1: Verification of Data Loader & Parsing
     # --------------------------------------------------
     print("\n[Step 1/5] Verifying Data Loader...")
+    if not os.path.exists(json_path):
+        print("-> Dataset not found at data/slake/train.json. Setting up verification dataset...")
+        try:
+            from scripts.prepare_synthetic_slake_data import setup_sample_slake_data
+            setup_sample_slake_data()
+        except Exception as err:
+            print(f"-> Failed to initialize verification dataset: {err}")
+
     try:
         dataset = SlakeCausalDataset(json_path, img_dir, mask_mapping_path)
         print(f"-> Successfully loaded dataset. Total samples: {len(dataset)}")
