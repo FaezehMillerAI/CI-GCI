@@ -34,15 +34,55 @@ def main():
     
     # 1. Load Dataset
     if args.dataset == "slake":
-        json_path = os.path.join(args.data_dir, "slake", "test.json")
-        img_dir = os.path.join(args.data_dir, "slake", "imgs")
-        mask_mapping = os.path.join(args.data_dir, "slake", "mask.txt")
+        slake_dir = os.path.join(args.data_dir, "slake")
+        json_path = None
+        for candidate in ["test.json", "validate.json", "val.json", "train.json"]:
+            cand_path = os.path.join(slake_dir, candidate)
+            if os.path.exists(cand_path):
+                json_path = cand_path
+                break
+                
+        if json_path is None:
+            print("-> SLAKE dataset JSON not found. Creating sample dataset for benchmark...")
+            try:
+                from scripts.prepare_synthetic_slake_data import setup_sample_slake_data
+                setup_sample_slake_data()
+                json_path = os.path.join(slake_dir, "test.json")
+            except Exception as err:
+                print(f"-> Warning setting up SLAKE sample dataset: {err}")
+                json_path = os.path.join(slake_dir, "test.json")
+                
+        img_dir = os.path.join(slake_dir, "imgs")
+        mask_mapping = os.path.join(slake_dir, "mask.txt")
         dataset = SlakeCausalDataset(json_path, img_dir, mask_mapping)
         dataset.data = [item for item in dataset.data if item.get("answer_type") == "CLOSED"]
         collate = causal_collate_fn
     elif args.dataset == "vqa_rad":
-        json_path = os.path.join(args.data_dir, "VQA-RAD", "VQA_RAD Dataset Public.json")
-        img_dir = os.path.join(args.data_dir, "VQA-RAD", "VQA_RAD Image Folder")
+        rad_dir = os.path.join(args.data_dir, "VQA-RAD")
+        json_candidates = [
+            "VQA_RAD Dataset Public.json",
+            "vqa_rad.json",
+            "train.json",
+            "VQA_RAD_Dataset_Public.json"
+        ]
+        json_path = None
+        for candidate in json_candidates:
+            cand_path = os.path.join(rad_dir, candidate)
+            if os.path.exists(cand_path):
+                json_path = cand_path
+                break
+                
+        if json_path is None:
+            print("-> VQA-RAD dataset JSON not found. Creating sample dataset for benchmark...")
+            try:
+                from scripts.prepare_synthetic_vqa_rad_data import setup_sample_vqa_rad_data
+                setup_sample_vqa_rad_data()
+                json_path = os.path.join(rad_dir, "VQA_RAD Dataset Public.json")
+            except Exception as err:
+                print(f"-> Warning setting up VQA-RAD sample dataset: {err}")
+                json_path = os.path.join(rad_dir, "VQA_RAD Dataset Public.json")
+                
+        img_dir = os.path.join(rad_dir, "VQA_RAD Image Folder")
         dataset = VQARadCausalDataset(json_path, img_dir)
         dataset.data = [item for item in dataset.data if item.get("answer_type") == "CLOSED"]
         collate = causal_collate_fn
