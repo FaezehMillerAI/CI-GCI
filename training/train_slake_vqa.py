@@ -24,10 +24,28 @@ def train_vqa(dataset_name="slake", data_dir="data/", config_path="configs/basel
     
     # Dataset & Loader resolution
     if dataset_name == "slake":
-        train_json = os.path.join(data_dir, "slake", "train.json")
-        val_json = os.path.join(data_dir, "slake", "validate.json")
-        img_dir = os.path.join(data_dir, "slake", "imgs")
-        mask_mapping_path = os.path.join(data_dir, "slake", "mask.txt")
+        slake_dir = os.path.join(data_dir, "slake")
+        train_json = os.path.join(slake_dir, "train.json")
+        if not os.path.exists(train_json):
+            print("-> SLAKE train.json not found. Creating sample dataset...")
+            try:
+                from scripts.prepare_synthetic_slake_data import setup_sample_slake_data
+                setup_sample_slake_data()
+            except Exception as err:
+                print(f"-> Warning setting up sample dataset: {err}")
+
+        val_json = None
+        for candidate in ["validate.json", "val.json", "test.json", "train.json"]:
+            cand_path = os.path.join(slake_dir, candidate)
+            if os.path.exists(cand_path):
+                val_json = cand_path
+                break
+                
+        if val_json is None:
+            val_json = train_json
+            
+        img_dir = os.path.join(slake_dir, "imgs")
+        mask_mapping_path = os.path.join(slake_dir, "mask.txt")
         
         train_dataset = SlakeCausalDataset(train_json, img_dir, mask_mapping_path)
         train_dataset.data = [item for item in train_dataset.data if item.get("answer_type") == "CLOSED"]

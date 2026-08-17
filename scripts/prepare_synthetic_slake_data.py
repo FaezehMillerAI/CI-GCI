@@ -77,6 +77,14 @@ def setup_sample_slake_data():
     with open(train_json_path, "w", encoding="utf-8") as f:
         json.dump(json_data, f, indent=2)
         
+    val_json_path = os.path.join(base_dir, "validate.json")
+    with open(val_json_path, "w", encoding="utf-8") as f:
+        json.dump(json_data, f, indent=2)
+
+    test_json_path = os.path.join(base_dir, "test.json")
+    with open(test_json_path, "w", encoding="utf-8") as f:
+        json.dump(json_data, f, indent=2)
+        
     print(f"[✓] Local sample dataset directory successfully set up at: {base_dir}")
 
 if __name__ == "__main__":
