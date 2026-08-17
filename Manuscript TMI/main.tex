@@ -162,11 +162,11 @@ To rigorously contextualize our performance against prior published literature, 
 \begin{table}[h]
 \caption{Benchmark Comparison Against Published SOTA Models}
 \label{tab:sota_benchmark}
-\centering
-\begin{tabular}{lcccc}
-\toprule
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|p{105pt}|p{55pt}|p{42pt}|p{42pt}|p{42pt}|}
+\hline
 Model & Venue / Year & VQA-RAD Acc & SLAKE Acc & PathVQA Acc \\
-\midrule
+\hline
 BAN + MEPA \cite{nguyen2019} & MICCAI 2019 & 0.6980 & -- & -- \\
 CP-VQA \cite{lili2022} & IEEE TMI 2022 & 0.7420 & 0.7450 & 0.5820 \\
 Q2ATransformer \cite{wang2024mmql} & MICCAI 2023 & 0.7920 & 0.7780 & -- \\
@@ -177,9 +177,9 @@ Med-BiasX \cite{zhu2025medbiasx} & MICCAI 2025 & 0.8310 & -- & -- \\
 DeCoCT \cite{wan2025decoct} & MICCAI 2025 & 0.7830 & 0.7920 & -- \\
 CIMB-MVQA \cite{liu2025cimb} & MedIA 2026 & 0.7940 & 0.7910 & -- \\
 DE-CaGI \cite{liu2026decagi} & MedIA 2026 & 0.8480 & 0.7980 & 0.6510 \\
-\midrule
-\textbf{Proposed CQC-Net (CI-GCI)} & \textbf{IEEE TMI (Ours)} & \textbf{0.9485} & \textbf{0.8350} & \textbf{0.6920} \\
-\bottomrule
+\hline
+\textbf{Proposed CQC-Net (CI-GCI)} & \textbf{IEEE TMI} & \textbf{0.9485} & \textbf{0.8350} & \textbf{0.6920} \\
+\hline
 \end{tabular}
 \end{table}
 
@@ -188,15 +188,16 @@ As demonstrated in Table~\ref{tab:sota_benchmark}, CI-GCI outperforms the best p
 \begin{table*}[t]
 \caption{Main Comparison on Standard Med-VQA Datasets}
 \label{tab:main_comparison}
-\centering
-\begin{tabular}{lcccccccccccc}
-\toprule
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|p{95pt}|p{32pt}|p{32pt}|p{32pt}|p{32pt}|p{32pt}|p{32pt}|p{28pt}|p{28pt}|p{35pt}|p{35pt}|p{35pt}|p{28pt}|p{28pt}|}
+\hline
 Model & VQA-RAD Acc & VQA-RAD F1 & SLAKE Acc & SLAKE F1 & PathVQA Acc & PathVQA F1 & BLEU-4 & ROUGE-L & BERTScore & Halluc. Rate $\downarrow$ & Halluc. F1 & AUROC & ECE $\downarrow$ \\
-\midrule
+\hline
 Baseline-1 (ResNet+Phi) & 0.6840 & 0.6520 & 0.7020 & 0.6810 & 0.5560 & 0.5310 & 0.2450 & 0.4210 & 0.7120 & 0.3850 & 0.5210 & 0.7010 & 0.1850 \\
 Baseline-2 (ViT+PubMedBERT) & 0.9345 & 0.7010 & 0.8125 & 0.7230 & 0.6020 & 0.5890 & 0.3010 & 0.4950 & 0.7680 & 0.2940 & 0.6040 & 0.7680 & 0.0268 \\
+\hline
 \textbf{Proposed CQC-Net (CI-GCI)} & \textbf{0.9485} & \textbf{0.8120} & \textbf{0.8350} & \textbf{0.8150} & \textbf{0.6920} & \textbf{0.6780} & \textbf{0.4120} & \textbf{0.6150} & \textbf{0.8620} & \textbf{0.1080} & \textbf{0.8520} & \textbf{0.9380} & \textbf{0.0215} \\
-\bottomrule
+\hline
 \end{tabular}
 \end{table*}
 
@@ -205,39 +206,41 @@ Beyond raw classification accuracy, CI-GCI demonstrates superior text generation
 \subsection{Multi-Tiered Diagnostic Reasoning Breakdown}
 To analyze model performance under escalating levels of diagnostic reasoning complexity, we evaluate CI-GCI on the Kvasir-VQA-x1 multi-tiered benchmark \cite{jha2023}. The evaluation splits questions into Level 1 (perception and feature detection), Level 2 (spatial localization), and Level 3 (causal clinical reasoning).
 
-\begin{table}[h]
+\begin{table*}[t]
 \caption{Kvasir-VQA-x1 Multi-Tiered Reasoning Breakdown}
 \label{tab:reasoning}
-\centering
-\begin{tabular}{lcccccccccc}
-\toprule
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|p{95pt}|p{35pt}|p{35pt}|p{35pt}|p{40pt}|p{32pt}|p{40pt}|p{40pt}|p{40pt}|p{45pt}|p{42pt}|}
+\hline
 Model & L1 Acc & L2 Acc & L3 Acc & Overall Acc & BLEU-4 & BERTScore & Halluc. Rate $\downarrow$ & Cause-Visual $\downarrow$ & Cause-Knowledge $\downarrow$ & Cause-Context $\downarrow$ \\
-\midrule
+\hline
 Baseline & 0.7840 & 0.6920 & 0.5810 & 0.6850 & 0.2850 & 0.7320 & 0.3120 & 0.1840 & 0.0810 & 0.0470 \\
+\hline
 \textbf{Proposed CQC-Net} & \textbf{0.9120} & \textbf{0.8450} & \textbf{0.7820} & \textbf{0.8460} & \textbf{0.4210} & \textbf{0.8650} & \textbf{0.0850} & \textbf{0.0380} & \textbf{0.0320} & \textbf{0.0120} \\
-\bottomrule
+\hline
 \end{tabular}
-\end{table}
+\end{table*}
 
 As shown in Table~\ref{tab:reasoning}, CI-GCI achieves 91.20\% accuracy on Level 1 perception tasks, 84.50\% accuracy on Level 2 spatial localization queries, and 78.20\% accuracy on complex Level 3 causal clinical reasoning tasks (compared to 58.10\% for observational baselines). Error attribution breakdown confirms that causal physical inpainting drastically reduces visually driven false premises (Cause-Visual error drops from 0.1840 to 0.0380).
 
 \subsection{Hallucination Verification Performance}
 The efficacy of the dual-stage Consistency Head and hallucination verifier is evaluated against specialized detection baselines in Table~\ref{tab:hallucination}.
 
-\begin{table}[h]
+\begin{table*}[t]
 \caption{Hallucination Detection Performance}
 \label{tab:hallucination}
-\centering
-\begin{tabular}{lccccccccc}
-\toprule
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|p{120pt}|p{38pt}|p{35pt}|p{38pt}|p{35pt}|p{35pt}|p{45pt}|p{40pt}|p{32pt}|p{32pt}|}
+\hline
 Model & Precision & Recall & F1 Score & AUROC & AUPRC & FPR@95TPR $\downarrow$ & Severity $\downarrow$ & ECE $\downarrow$ & Brier $\downarrow$ \\
-\midrule
+\hline
 PubMedBERT Entailment & 0.6420 & 0.5810 & 0.6100 & 0.7560 & 0.6210 & 0.3840 & 0.8120 & 0.1240 & 0.1840 \\
 BiomedCLIP Scorer & 0.7050 & 0.6540 & 0.6780 & 0.8040 & 0.7180 & 0.3120 & 0.7020 & 0.0980 & 0.1450 \\
+\hline
 \textbf{Proposed Consistency Head} & \textbf{0.8650} & \textbf{0.8420} & \textbf{0.8530} & \textbf{0.9380} & \textbf{0.9120} & \textbf{0.1120} & \textbf{0.3150} & \textbf{0.0280} & \textbf{0.0480} \\
-\bottomrule
+\hline
 \end{tabular}
-\end{table}
+\end{table*}
 
 The proposed Consistency Head achieves a detection Precision of 86.50\%, Recall of 84.20\%, F1 Score of 85.30\%, and AUROC of 0.9380, outperforming general text-entailment and CLIP-scoring baselines while suppressing false positive rates at 95\% true positive rate (FPR@95TPR = 11.20\%).
 
@@ -247,14 +250,15 @@ To verify that diagnostic answers stem from verified visual lesion regions rathe
 \begin{table}[h]
 \caption{Grounding and Explanation Quality}
 \label{tab:grounding}
-\centering
-\begin{tabular}{lcccccc}
-\toprule
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|p{85pt}|p{42pt}|p{28pt}|p{28pt}|p{45pt}|p{45pt}|p{45pt}|}
+\hline
 Model & Pointing Game $\uparrow$ & IoU $\uparrow$ & Dice $\uparrow$ & Deletion AUC $\downarrow$ & Insertion AUC $\uparrow$ & Human Score $\uparrow$ \\
-\midrule
+\hline
 Baseline & 0.6840 & 0.4520 & 0.5910 & 0.3820 & 0.6120 & 3.1200 \\
+\hline
 \textbf{Proposed CQC-Net} & \textbf{0.8750} & \textbf{0.6920} & \textbf{0.8040} & \textbf{0.1780} & \textbf{0.8320} & \textbf{4.6800} \\
-\bottomrule
+\hline
 \end{tabular}
 \end{table}
 
@@ -266,14 +270,15 @@ To validate clinical utility, a double-blinded reader study was conducted by thr
 \begin{table}[h]
 \caption{Blinded Human Evaluation by Radiologists}
 \label{tab:human_eval}
-\centering
-\begin{tabular}{lccccc}
-\toprule
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|p{85pt}|p{65pt}|p{52pt}|p{45pt}|p{58pt}|p{45pt}|}
+\hline
 Model & Clinical Correctness $\uparrow$ & Image Grounding $\uparrow$ & Helpfulness $\uparrow$ & Hallucination Severity $\downarrow$ & Cohen's $\kappa$ \\
-\midrule
+\hline
 Baseline & 3.4200 & 3.1500 & 3.2800 & 2.4500 & 0.6840 \\
+\hline
 \textbf{Proposed CQC-Net} & \textbf{4.7200} & \textbf{4.6100} & \textbf{4.7800} & \textbf{0.9200} & \textbf{0.8150} \\
-\bottomrule
+\hline
 \end{tabular}
 \end{table}
 
@@ -285,14 +290,15 @@ In safety-critical medical triage, models must accurately signal predictive unce
 \begin{table}[h]
 \caption{Calibration and Selective Abstention Performance}
 \label{tab:calibration}
-\centering
-\begin{tabular}{lcccccc}
-\toprule
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|p{85pt}|p{30pt}|p{30pt}|p{30pt}|p{30pt}|p{48pt}|p{48pt}|}
+\hline
 Model & ECE $\downarrow$ & MCE $\downarrow$ & Brier $\downarrow$ & NLL $\downarrow$ & Risk @ $\tau_1 \downarrow$ & Risk @ $\tau_2 \downarrow$ \\
-\midrule
+\hline
 Baseline & 0.1314 & 0.2450 & 0.1450 & 0.3820 & 0.2750 & 0.2750 \\
+\hline
 \textbf{Proposed CQC-Net} & \textbf{0.0215} & \textbf{0.0680} & \textbf{0.0380} & \textbf{0.1240} & \textbf{0.0580} & \textbf{0.0150} \\
-\bottomrule
+\hline
 \end{tabular}
 \end{table}
 
@@ -304,18 +310,18 @@ To quantify the individual contribution of each component, we conduct systematic
 \begin{table*}[t]
 \caption{Ablation Study of Core Modules}
 \label{tab:ablation}
-\centering
-\begin{tabular}{lcccccccccccc}
-\toprule
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|p{70pt}|p{20pt}|p{28pt}|p{45pt}|p{28pt}|p{38pt}|p{28pt}|p{28pt}|p{30pt}|p{28pt}|p{48pt}|p{32pt}|p{32pt}|}
+\hline
 Setting & QCG & Verifier & Consistency & Refiner & Abstention & Acc & F1 & BLEU-4 & CIDEr & Halluc. Rate $\downarrow$ & AUROC & ECE $\downarrow$ \\
-\midrule
+\hline
 \textbf{Full model} & \textbf{\checkmark} & \textbf{\checkmark} & \textbf{\checkmark} & \textbf{\checkmark} & \textbf{\checkmark} & \textbf{0.8350} & \textbf{0.8150} & \textbf{0.4120} & \textbf{0.7650} & \textbf{0.1080} & \textbf{0.9380} & \textbf{0.0215} \\
 w/o QCG & \text{\sffamily X} & \checkmark & \checkmark & \checkmark & \checkmark & 0.7250 & 0.7010 & 0.3010 & 0.5840 & 0.2940 & 0.7680 & 0.1240 \\
 w/o Verifier & \checkmark & \text{\sffamily X} & \checkmark & \checkmark & \checkmark & 0.7420 & 0.7210 & 0.3120 & 0.6010 & 0.2850 & 0.7750 & 0.1150 \\
 w/o Consistency & \checkmark & \checkmark & \text{\sffamily X} & \checkmark & \checkmark & 0.7510 & 0.7320 & 0.3240 & 0.6120 & 0.2640 & 0.7920 & 0.1080 \\
 w/o Refiner & \checkmark & \checkmark & \checkmark & \text{\sffamily X} & \checkmark & 0.7720 & 0.7540 & 0.3520 & 0.6520 & 0.1080 & 0.9380 & 0.0420 \\
 w/o Abstention & \checkmark & \checkmark & \checkmark & \checkmark & \text{\sffamily X} & 0.8350 & 0.8150 & 0.4120 & 0.7650 & 0.2740 & 0.7840 & 0.1180 \\
-\bottomrule
+\hline
 \end{tabular}
 \end{table*}
 
