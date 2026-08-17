@@ -124,7 +124,10 @@ In clinical diagnostic workflows, presenting an incorrect high-confidence answer
 
 Simultaneously, a decision-theoretic abstention rule evaluates the maximum interventional probability against a calibrated clinical uncertainty threshold $\tau$. The final system output is governed by:
 \begin{equation}
-\text{Abstain}(I, Q) = \begin{cases} \text{Output } \hat{A}, & \text{if } \max P(A \mid do(I), Q) \ge \tau, \\ \text{"Uncertain - Referred to Radiologist"}, & \text{otherwise.} \end{cases}
+\text{Abstain}(I, Q) = \begin{cases} 
+\text{Output } \hat{A}, & \text{if } \max\limits_{A} P(A \mid do(I), Q) \ge \tau, \\[3pt]
+\text{Referral}, & \text{otherwise.}
+\end{cases}
 \label{eq:abstain}
 \end{equation}
 When the visual evidence is ambiguous or counterfactual contrast is insufficient, the system abstains from generating an automated diagnosis, referring the case to human radiologists. At operational threshold $\tau_2$, this selective classification framework achieves a 2.4\% clinical error rate at 72.5\% coverage, establishing a robust safeguard for deployment in clinical environments.
