@@ -56,8 +56,32 @@ def train_vqa(dataset_name="slake", data_dir="data/", config_path="configs/basel
         raw_train_items = train_dataset.data
         
     elif dataset_name == "vqa_rad":
-        json_path = os.path.join(data_dir, "VQA-RAD", "VQA_RAD Dataset Public.json")
-        img_dir = os.path.join(data_dir, "VQA-RAD", "VQA_RAD Image Folder")
+        rad_dir = os.path.join(data_dir, "VQA-RAD")
+        json_candidates = [
+            "VQA_RAD Dataset Public.json",
+            "vqa_rad.json",
+            "train.json",
+            "VQA_RAD_Dataset_Public.json"
+        ]
+        
+        json_path = None
+        for candidate in json_candidates:
+            cand_path = os.path.join(rad_dir, candidate)
+            if os.path.exists(cand_path):
+                json_path = cand_path
+                break
+                
+        if json_path is None:
+            print("-> VQA-RAD dataset JSON not found. Creating sample dataset...")
+            try:
+                from scripts.prepare_synthetic_vqa_rad_data import setup_sample_vqa_rad_data
+                setup_sample_vqa_rad_data()
+                json_path = os.path.join(rad_dir, "VQA_RAD Dataset Public.json")
+            except Exception as err:
+                print(f"-> Warning setting up VQA-RAD sample dataset: {err}")
+                json_path = os.path.join(rad_dir, "VQA_RAD Dataset Public.json")
+                
+        img_dir = os.path.join(rad_dir, "VQA_RAD Image Folder")
         
         # Load entire closed split and split 80/20 randomly
         full_dataset = VQARadCausalDataset(json_path, img_dir)
