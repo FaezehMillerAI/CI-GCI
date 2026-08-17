@@ -59,8 +59,8 @@ Causal inference and Pearl's $do$-calculus \cite{pearl2009} have been applied to
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{fig_framework.pdf}
-\caption{Overview of the proposed Causal-Interventional Grounding and Counterfactual Inpainting (CI-GCI) framework. (1) Question $Q$ and image $I$ are encoded to locate spatial ROI mask $\mathbf{M}$ via Gaze-Guided ROI Locator (GGRL) cross-attention. (2) The Observational Path computes observational logits $\mathbf{L}_{\text{orig}}$. (3) The Interventional Path applies physical $do$-calculus $do(I \setminus \text{ROI})$ using Generative Counterfactual Inpainting (CFI) to erase lesion evidence into healthy organ background, producing counterfactual logits $\mathbf{L}_{\text{cf}}$. (4) The Causal Contrastive Decoder (CCD) computes calibrated interventional logits $\mathbf{L}_{\text{calib}} = \mathbf{L}_{\text{orig}} + \gamma(Q) \odot \text{ITE}$. (5) The Consistency Verification Head and Selective Abstention Triage Gate route high-confidence predictions to automated output $\hat{A}$ and uncertain cases to human radiologists.}
+\includegraphics[width=\textwidth]{fig_framework.jpg}
+\caption{Overview of the proposed Causal-Interventional Grounding and Counterfactual Inpainting (CI-GCI) framework. (1) Question $Q$ and image $I$ are encoded to locate spatial ROI mask $\mathbf{M}$ via Gaze-Guided ROI Locator (GGRL) cross-attention. (2) Stage 1: Cross-attention visual-text feature alignment produces a spatial attention heatmap mask $\mathbf{M}$. (3) Stage 2: Generative Counterfactual Inpainter (CFI) applies latent diffusion mask inpainting to physically remove the ROI $do(I \setminus \text{ROI})$, generating counterfactual image $I_{\text{cf}}$. (4) Stage 3: Causal Contrastive Decoder (CCD) computes Individual Treatment Effect (ITE) and calibrated probabilities using dynamic scale factor $\gamma(Q)$. (5) Stage 4: Dual-stage Consistency Head outputs calibrated diagnostic answer $A$ or refers uncertain cases to Human Radiologist Referral.}
 \label{fig:framework}
 \end{figure*}
 
